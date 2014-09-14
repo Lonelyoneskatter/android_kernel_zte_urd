@@ -697,6 +697,14 @@ config MSM_VSENS
 
 	  Say yes to support these devices.
 
+config MSM_RUN_QUEUE_STATS_BE_CONSERVATIVE
+	bool "Use a more conservative computation for RQ Stats"
+	depends on MSM_RUN_QUEUE_STATS
+	default n
+	help
+	  Enable more conservative computation of load and size of the run
+	  queue.
+
 source "drivers/soc/qcom/memshare/Kconfig"
 
 endif # ARCH_MSM
