@@ -21,6 +21,9 @@
 #include <linux/leds.h>
 #include <linux/qpnp/pwm.h>
 #include <linux/err.h>
+#ifdef CONFIG_STATE_NOTIFIER
+#include <linux/state_notifier.h>
+#endif
 
 #include "mdss_dsi.h"
 #include "mdss_dba_utils.h"
@@ -1302,6 +1305,10 @@ static int mdss_dsi_panel_on(struct mdss_panel_data *pdata)
 	struct dsi_panel_cmds *on_cmds;
 	int ret = 0;
 
+#ifdef CONFIG_STATE_NOTIFIER
+	state_resume();
+#endif
+
 	if (pdata == NULL) {
 		pr_err("%s: Invalid input data\n", __func__);
 		return -EINVAL;
@@ -1395,6 +1402,10 @@ static int mdss_dsi_panel_off(struct mdss_panel_data *pdata)
 				panel_data);
 
 	pr_debug("%s: ctrl=%p ndx=%d\n", __func__, ctrl, ctrl->ndx);
+
+#ifdef CONFIG_STATE_NOTIFIER
+	state_suspend();
+#endif
 
 	if (pinfo->dcs_cmd_by_left) {
 		if (ctrl->ndx != DSI_CTRL_LEFT)
