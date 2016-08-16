@@ -25,6 +25,10 @@
 #include <linux/state_notifier.h>
 #endif
 
+#ifdef CONFIG_POWERSUSPEND
+#include <linux/powersuspend.h>
+#endif
+
 #include "mdss_dsi.h"
 #include "mdss_dba_utils.h"
 
@@ -1311,6 +1315,10 @@ static int mdss_dsi_panel_on(struct mdss_panel_data *pdata)
 	state_resume();
 #endif
 
+#ifdef CONFIG_POWERSUSPEND
+	set_power_suspend_state_panel_hook(POWER_SUSPEND_INACTIVE);
+#endif
+
 	screen_on = true;
 
 	if (pdata == NULL) {
@@ -1412,6 +1420,10 @@ static int mdss_dsi_panel_off(struct mdss_panel_data *pdata)
 #endif
 
 	screen_on = false;
+
+#ifdef CONFIG_POWERSUSPEND
+	set_power_suspend_state_panel_hook(POWER_SUSPEND_ACTIVE);
+#endif
 
 	if (pinfo->dcs_cmd_by_left) {
 		if (ctrl->ndx != DSI_CTRL_LEFT)
