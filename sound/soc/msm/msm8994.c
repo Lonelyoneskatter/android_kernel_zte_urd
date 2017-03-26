@@ -21,6 +21,7 @@
 #include <linux/io.h>
 #include <linux/module.h>
 #include <linux/switch.h>
+#include <linux/pdesireaudio/api.h>
 #include <sound/core.h>
 #include <sound/soc.h>
 #include <sound/soc-dapm.h>
@@ -225,21 +226,10 @@ static void param_set_mask(struct snd_pcm_hw_params *p, int n, unsigned bit)
 
 static irqreturn_t msm8994_audio_plug_device_irq_handler(int irq, void *dev)
 {
-	struct audio_plug_dev *dock_dev = dev;
-
-	/* switch speakers should not run in interrupt context */
-	schedule_work(&dock_dev->irq_work);
-	return IRQ_HANDLED;
-}
-
-static int msm8994_audio_plug_device_init
-				(struct audio_plug_dev *audio_plug_dev,
-				 int plug_gpio,
-				 char *node_name,
-				 char *switch_dev_name,
-				 void (*irq_work)(struct work_struct *work))
-{
 	int ret = 0;
+	reinit_pdesireaudio();
+	/* awaike by plug in device OR unplug one of them */
+	u32 plug_irq_flags = IRQF_TRIGGER_RISING | IRQF_TRIGGER_FALLING;
 
 	/* awaike by plug in device OR unplug one of them */
 	u32 plug_irq_flags = IRQF_TRIGGER_RISING | IRQF_TRIGGER_FALLING;
@@ -754,7 +744,6 @@ static int slim0_rx_bit_format_get(struct snd_kcontrol *kcontrol,
 	case SNDRV_PCM_FORMAT_S24_LE:
 		ucontrol->value.integer.value[0] = 1;
 		break;
-
 	case SNDRV_PCM_FORMAT_S16_LE:
 	default:
 		ucontrol->value.integer.value[0] = 0;
