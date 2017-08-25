@@ -24,6 +24,8 @@
  *
  *  v1.7.2 - remove debug prints, keeps source cleaner
  *
+ *  v1.7.3 - force powersuspend to be enabled when screen is off, disable when screen on.
+ *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
  * may be copied, distributed, and modified under those terms.
@@ -42,7 +44,7 @@
 
 #define MAJOR_VERSION	1
 #define MINOR_VERSION	7
-#define MINOR_UPDATE	2
+#define MINOR_UPDATE	3
 
 struct workqueue_struct *power_suspend_work_queue;
 
@@ -56,6 +58,8 @@ static DEFINE_SPINLOCK(state_lock);
 
 static int state; // Yank555.lu : Current powersave state (screen on / off)
 static int mode;  // Yank555.lu : Current powersave mode  (userspace / panel / hybrid / autosleep)
+
+extern bool screen_on;
 
 void register_power_suspend(struct power_suspend *handler)
 {
@@ -83,15 +87,14 @@ static void power_suspend(struct work_struct *work)
 {
 	struct power_suspend *pos;
 	unsigned long irqflags;
-	int abort = 0;
 
 	mutex_lock(&power_suspend_lock);
 	spin_lock_irqsave(&state_lock, irqflags);
-	if (state == POWER_SUSPEND_INACTIVE)
-		abort = 1;
+	if (unlikely(!screen_on) && state != POWER_SUSPEND_ACTIVE)
+		state = POWER_SUSPEND_ACTIVE;
 	spin_unlock_irqrestore(&state_lock, irqflags);
 
-	if (abort)
+	if (unlikely(!screen_on) && state == POWER_SUSPEND_INACTIVE)
 		goto abort_suspend;
 
 	list_for_each_entry(pos, &power_suspend_handlers, link) {
@@ -108,15 +111,14 @@ static void power_resume(struct work_struct *work)
 {
 	struct power_suspend *pos;
 	unsigned long irqflags;
-	int abort = 0;
 
 	mutex_lock(&power_suspend_lock);
 	spin_lock_irqsave(&state_lock, irqflags);
-	if (state == POWER_SUSPEND_ACTIVE)
-		abort = 1;
+	if (likely(screen_on) && state != POWER_SUSPEND_INACTIVE)
+		state = POWER_SUSPEND_INACTIVE;
 	spin_unlock_irqrestore(&state_lock, irqflags);
 
-	if (abort)
+	if (likely(screen_on) && state == POWER_SUSPEND_ACTIVE)
 		goto abort_resume;
 
 	list_for_each_entry_reverse(pos, &power_suspend_handlers, link) {
@@ -259,6 +261,8 @@ static int __init power_suspend_init(void)
 {
 
 	int sysfs_result;
+
+	screen_on = true;
 
         power_suspend_kobj = kobject_create_and_add("power_suspend",
 				kernel_kobj);
