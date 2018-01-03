@@ -135,9 +135,6 @@ enum {
 };
 
 static int msm_mpm_debug_mask = 0;
-module_param_named(
-	debug_mask, msm_mpm_debug_mask, int, S_IRUGO | S_IWUSR | S_IWGRP
-);
 
 enum mpm_state {
 	MSM_MPM_IRQ_MAPPING_DONE = BIT(0),
