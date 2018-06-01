@@ -58,6 +58,8 @@ static char rc_range_max_qp[] = {4, 4, 5, 6, 7, 7, 7, 8, 9, 10, 11, 12,
 static char rc_range_bpg_offset[] = {2, 0, 0, -2, -4, -6, -8, -8, -8, -10, -10,
 	-12, -12, -12, -12};
 
+bool screen_on = true;
+
 //-->ZTE_TZB add start, 20150923
 ssize_t mdss_dsi_panel_lcd_read_proc(struct file *file, char __user *page, size_t size, loff_t *ppos)
 {
@@ -1309,6 +1311,8 @@ static int mdss_dsi_panel_on(struct mdss_panel_data *pdata)
 	state_resume();
 #endif
 
+	screen_on = true;
+
 	if (pdata == NULL) {
 		pr_err("%s: Invalid input data\n", __func__);
 		return -EINVAL;
@@ -1406,6 +1410,8 @@ static int mdss_dsi_panel_off(struct mdss_panel_data *pdata)
 #ifdef CONFIG_STATE_NOTIFIER
 	state_suspend();
 #endif
+
+	screen_on = false;
 
 	if (pinfo->dcs_cmd_by_left) {
 		if (ctrl->ndx != DSI_CTRL_LEFT)
