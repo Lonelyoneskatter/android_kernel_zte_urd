@@ -19,6 +19,12 @@
 
 DEFINE_MSM_MUTEX(msm_actuator_mutex);
 
+/* add debug info for HWD */
+#ifdef CONFIG_BOARD_GEVJON
+#define MSM_ACTUATOR_DEBUG
+#endif
+/* it should be remove later */
+
 #undef CDBG
 #ifdef MSM_ACTUATOR_DEBUG
 #define CDBG(fmt, args...) pr_err(fmt, ##args)

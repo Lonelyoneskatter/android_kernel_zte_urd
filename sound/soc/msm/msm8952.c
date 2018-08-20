@@ -1,4 +1,4 @@
-/* Copyright (c) 2015, The Linux Foundation. All rights reserved.
+/* Copyright (c) 2015-2016, The Linux Foundation. All rights reserved.
  *
  * This program is free software; you can redistribute it and/or modify
  * it under the terms of the GNU General Public License version 2 and
@@ -26,6 +26,7 @@
 #include <sound/pcm.h>
 #include <sound/jack.h>
 #include <sound/q6afe-v2.h>
+#include <sound/q6core.h>
 #include <soc/qcom/socinfo.h>
 #include "qdsp6v2/msm-pcm-routing-v2.h"
 #include "msm-audio-pinctrl.h"
@@ -64,7 +65,7 @@ static int msm_pri_mi2s_rx_ch = 1;
 static int msm_proxy_rx_ch = 2;
 static int msm_vi_feed_tx_ch = 2;
 static int mi2s_rx_bit_format = SNDRV_PCM_FORMAT_S16_LE;
-#if defined(CONFIG_BOARD_JASMINE)
+#if defined(CONFIG_BOARD_JASMINE)||defined(CONFIG_BOARD_GEVJON)
 //static int msm8952_spk_control = 1;
 static int ext_spk_amp_gpio = -1;
 static int msm8952_hds_control = 1;
@@ -84,7 +85,7 @@ static int msm8952_wsa_switch_event(struct snd_soc_dapm_widget *w,
 			      struct snd_kcontrol *kcontrol, int event);
 static int msm8952_ext_audio_switch_event(struct snd_soc_dapm_widget *w,
 			      struct snd_kcontrol *kcontrol, int event);
-#if defined(CONFIG_BOARD_JASMINE)
+#if defined(CONFIG_BOARD_JASMINE)||defined(CONFIG_BOARD_GEVJON)
 static void msm8952_enable_ext_spk_power_amp(u32 on);
 #endif
 
@@ -147,7 +148,7 @@ static const char *const loopback_mclk_text[] = {"DISABLE", "ENABLE"};
 static const char *const proxy_rx_ch_text[] = {"One", "Two", "Three", "Four",
 	"Five", "Six", "Seven", "Eight"};
 static const char *const vi_feed_ch_text[] = {"One", "Two"};
-#if defined(CONFIG_BOARD_JASMINE)
+#if defined(CONFIG_BOARD_JASMINE)||defined(CONFIG_BOARD_GEVJON)
 //static const char *const ext_spk_text[] = {"Off", "On"};
 static const char *const ext_hds_text[] = {"Off", "On"};
 #endif
@@ -175,7 +176,7 @@ static void param_set_mask(struct snd_pcm_hw_params *p, int n, unsigned bit)
 	}
 }
 
-#if defined(CONFIG_BOARD_JASMINE)
+#if defined(CONFIG_BOARD_JASMINE)||defined(CONFIG_BOARD_GEVJON)
 static int msm_ext_spkramp_event(struct snd_soc_dapm_widget *w,
 			     struct snd_kcontrol *k, int event)
 {
@@ -198,7 +199,7 @@ static const struct snd_soc_dapm_widget msm8952_dapm_widgets[] = {
 	SND_SOC_DAPM_MIC("Secondary Mic", NULL),
 	SND_SOC_DAPM_MIC("Digital Mic1", NULL),
 	SND_SOC_DAPM_MIC("Digital Mic2", NULL),
-#if defined(CONFIG_BOARD_JASMINE)
+#if defined(CONFIG_BOARD_JASMINE)||defined(CONFIG_BOARD_GEVJON)
 	SND_SOC_DAPM_SPK("Lineout_hph amp", msm_ext_spkramp_event),
 #endif
 	SND_SOC_DAPM_SUPPLY("VDD_WSA_SWITCH", SND_SOC_NOPM, 0, 0,
@@ -232,7 +233,7 @@ int is_ext_spk_gpio_support(struct platform_device *pdev,
 	return 0;
 }
 
-#if defined(CONFIG_BOARD_JASMINE)
+#if defined(CONFIG_BOARD_JASMINE)||defined(CONFIG_BOARD_GEVJON)
 // ZTE_ZJB_config_gpio91 start
 static int msm8952_ext_spk_power_amp_init(struct platform_device *pdev,
 			struct msm8916_asoc_mach_data *pdata)
@@ -288,7 +289,7 @@ static void msm8952_enable_ext_spk_power_amp(u32 on)
 // ZTE_ZJB_config_gpio91 end
 #endif
 
-#if defined(CONFIG_BOARD_JASMINE)
+#if defined(CONFIG_BOARD_JASMINE)||defined(CONFIG_BOARD_GEVJON)
 // ZTE_ZJB_config_gpio63 start
 static int msm8952_ext_hds_power_amp_init(struct platform_device *pdev,
 			struct msm8916_asoc_mach_data *pdata)
@@ -1117,7 +1118,7 @@ static int spk_amp_put(struct snd_kcontrol *kcontrol,
 // ZTE_ZJB_config_gpio91 end
 #endif
 
-#if defined(CONFIG_BOARD_JASMINE)
+#if defined(CONFIG_BOARD_JASMINE)||defined(CONFIG_BOARD_GEVJON)
 // ZTE_ZJB_config_gpio63 start
 static int hds_amp_get(struct snd_kcontrol *kcontrol,
 		       struct snd_ctl_elem_value *ucontrol)
@@ -1166,7 +1167,7 @@ static const struct soc_enum msm_snd_enum[] = {
 	SOC_ENUM_SINGLE_EXT(2, loopback_mclk_text),
 	SOC_ENUM_SINGLE_EXT(8, proxy_rx_ch_text),
 	SOC_ENUM_SINGLE_EXT(2, vi_feed_ch_text),
-#if defined(CONFIG_BOARD_JASMINE)
+#if defined(CONFIG_BOARD_JASMINE)||defined(CONFIG_BOARD_GEVJON)
 	//SOC_ENUM_SINGLE_EXT(2, ext_spk_text),
 	SOC_ENUM_SINGLE_EXT(2, ext_hds_text),
 #endif
@@ -1193,7 +1194,7 @@ static const struct snd_kcontrol_new msm_snd_controls[] = {
 			msm_proxy_rx_ch_get, msm_proxy_rx_ch_put),
 	SOC_ENUM_EXT("VI_FEED_TX Channels", msm_snd_enum[4],
 			msm_vi_feed_tx_ch_get, msm_vi_feed_tx_ch_put),
-#if defined(CONFIG_BOARD_JASMINE)
+#if defined(CONFIG_BOARD_JASMINE)||defined(CONFIG_BOARD_GEVJON)
 	//SOC_ENUM_EXT("Spk Amp Switch", msm_snd_enum[5], spk_amp_get,
 	//			spk_amp_put),
 	SOC_ENUM_EXT("Hds GPIO Switch", msm_snd_enum[5], hds_amp_get,
@@ -1361,6 +1362,11 @@ static int msm_mi2s_snd_startup(struct snd_pcm_substream *substream)
 	pr_debug("%s(): substream = %s  stream = %d\n", __func__,
 		 substream->name, substream->stream);
 
+	if (!q6core_is_adsp_ready()) {
+		pr_err("%s(): adsp not ready\n", __func__);
+		return -EINVAL;
+	}
+
 	/*
 	 * configure the slave select to
 	 * invalid state for internal codec
@@ -1451,6 +1457,11 @@ static int msm_prim_auxpcm_startup(struct snd_pcm_substream *substream)
 	pr_debug("%s(): substream = %s\n",
 			__func__, substream->name);
 
+	if (!q6core_is_adsp_ready()) {
+		pr_err("%s(): adsp not ready\n", __func__);
+		return -EINVAL;
+	}
+
 	/* mux config to route the AUX MI2S */
 	if (pdata->vaddr_gpio_mux_mic_ctl) {
 		val = ioread32(pdata->vaddr_gpio_mux_mic_ctl);
@@ -1516,6 +1527,12 @@ static int msm_sec_mi2s_snd_startup(struct snd_pcm_substream *substream)
 					__func__);
 		return 0;
 	}
+
+	if (!q6core_is_adsp_ready()) {
+		pr_err("%s(): adsp not ready\n", __func__);
+		return -EINVAL;
+	}
+
 	if ((pdata->ext_pa & SEC_MI2S_ID) == SEC_MI2S_ID) {
 		if (pdata->vaddr_gpio_mux_spkr_ctl) {
 			val = ioread32(pdata->vaddr_gpio_mux_spkr_ctl);
@@ -1588,6 +1605,12 @@ static int msm_quat_mi2s_snd_startup(struct snd_pcm_substream *substream)
 	int ret = 0, val = 0;
 	pr_debug("%s(): substream = %s  stream = %d\n", __func__,
 				substream->name, substream->stream);
+
+	if (!q6core_is_adsp_ready()) {
+		pr_err("%s(): adsp not ready\n", __func__);
+		return -EINVAL;
+	}
+
 	if ((pdata->ext_pa & QUAT_MI2S_ID) == QUAT_MI2S_ID) {
 		if (pdata->vaddr_gpio_mux_mic_ctl) {
 			val = ioread32(pdata->vaddr_gpio_mux_mic_ctl);
@@ -1655,6 +1678,12 @@ static int msm_quin_mi2s_snd_startup(struct snd_pcm_substream *substream)
 
 	pr_debug("%s(): substream = %s  stream = %d\n", __func__,
 				substream->name, substream->stream);
+
+	if (!q6core_is_adsp_ready()) {
+		pr_err("%s(): adsp not ready\n", __func__);
+		return -EINVAL;
+	}
+
 	if (pdata->vaddr_gpio_mux_quin_ctl) {
 		val = ioread32(pdata->vaddr_gpio_mux_quin_ctl);
 		val = val | 0x00000001;
@@ -1750,8 +1779,8 @@ static void *def_msm8952_wcd_mbhc_cal(void)
 	btn_high[0] = 100;
 	btn_low[1] = 150;
 	btn_high[1] = 150;
-	btn_low[2] = 225;
-	btn_high[2] = 225;
+	btn_low[2] = 200;
+	btn_high[2] = 200;
 	btn_low[3] = 450;
 	btn_high[3] = 450;
 	btn_low[4] = 500;
@@ -1790,7 +1819,7 @@ static int msm_audrx_init(struct snd_soc_pcm_runtime *rtd)
 	snd_soc_dapm_ignore_suspend(dapm, "DMIC1");
 	snd_soc_dapm_ignore_suspend(dapm, "DMIC2");
 	snd_soc_dapm_ignore_suspend(dapm, "WSA_SPK OUT");
-#if defined(CONFIG_BOARD_JASMINE)
+#if defined(CONFIG_BOARD_JASMINE)||defined(CONFIG_BOARD_GEVJON)
 	snd_soc_dapm_ignore_suspend(dapm, "Lineout_hph amp");
 #endif
 
@@ -3143,13 +3172,13 @@ static int msm8952_asoc_machine_probe(struct platform_device *pdev)
 		pr_debug("%s:  doesn't support external speaker pa\n",
 				__func__);
 
-#if defined(CONFIG_BOARD_JASMINE)
+#if defined(CONFIG_BOARD_JASMINE)||defined(CONFIG_BOARD_GEVJON)
 	ret = msm8952_ext_spk_power_amp_init(pdev, pdata);
 	if (ret < 0)
 		pr_debug("%s: zhujb: doesn't init external speaker pa\n",
 				__func__);
 #endif
-#if defined(CONFIG_BOARD_JASMINE)
+#if defined(CONFIG_BOARD_JASMINE)||defined(CONFIG_BOARD_GEVJON)
 		ret = msm8952_ext_hds_power_amp_init(pdev, pdata);
 		if (ret < 0)
 			pr_debug("%s: zhujb: doesn't init external speaker pa\n",
@@ -3268,7 +3297,7 @@ static int msm8952_asoc_machine_remove(struct platform_device *pdev)
 		mutex_destroy(&pdata->wsa_mclk_mutex);
 	}
 
-#if defined(CONFIG_BOARD_JASMINE)
+#if defined(CONFIG_BOARD_JASMINE)||defined(CONFIG_BOARD_GEVJON)
 	if (gpio_is_valid(ext_spk_amp_gpio))
 		gpio_free(ext_spk_amp_gpio);
 	if (gpio_is_valid(ext_hds_amp_gpio))

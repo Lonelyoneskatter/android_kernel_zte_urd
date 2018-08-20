@@ -1079,6 +1079,7 @@ static void msm_otg_host_hnp_enable(struct usb_otg *otg, bool enable)
 		clear_bit(HCD_FLAG_HW_ACCESSIBLE, &hcd->flags);
 	} else {
 		usb_remove_hcd(hcd);
+		pr_err("%s: phy_reset msm_otg_host_hnp_enable.\n", __func__);
 		msm_otg_reset(otg->phy);
 		usb_add_hcd(hcd, hcd->irq, IRQF_SHARED);
 	}
@@ -1406,6 +1407,7 @@ static void msm_otg_exit_phy_retention(struct msm_otg *motg)
 		 * It is required to do USB block reset to bring Femto PHY out
 		 * of retention.
 		 */
+		pr_err("%s: phy_reset msm_otg_exit_phy_retention.\n", __func__);
 		msm_otg_reset(&motg->phy);
 		break;
 	default:
@@ -1500,8 +1502,10 @@ lpm_start:
 			phy->state == OTG_STATE_B_PERIPHERAL;
 
 	/* Perform block reset to recover from UDC error events on disconnect */
-	if (motg->err_event_seen)
+	if (motg->err_event_seen) {
+		pr_err("%s: phy_reset msm_otg_suspend.\n", __func__);
 		msm_otg_reset(phy);
+	}
 
 	/* Enable line state difference wakeup fix for only device and host
 	 * bus suspend scenarios.  Otherwise PHY can not be suspended when
@@ -2405,6 +2409,7 @@ static int msm_otg_set_host(struct usb_otg *otg, struct usb_bus *host)
 
 	if (!host) {
 		if (otg->phy->state == OTG_STATE_A_HOST) {
+			pr_err("%s: phy_reset msm_otg_set_host.\n", __func__);
 			pm_runtime_get_sync(otg->phy->dev);
 			usb_unregister_notify(&motg->usbdev_nb);
 			msm_otg_start_host(otg, 0);
@@ -5377,7 +5382,7 @@ msm_otg_ext_chg_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 			ret = -EFAULT;
 			break;
 		}
-		pr_debug("%s: LPM block request %d\n", __func__, val);
+		pr_err("%s: LPM block request %d\n", __func__, val);
 		msm_otg_dbg_log_event(&motg->phy, "LPM BLOCK REQ", val, 0);
 		if (val) { /* block LPM */
 			if (motg->chg_type == USB_DCP_CHARGER) {
@@ -5397,6 +5402,7 @@ msm_otg_ext_chg_ioctl(struct file *file, unsigned int cmd, unsigned long arg)
 					get_pm_runtime_counter(motg->phy.dev),
 					0);
 					pm_runtime_get_sync(motg->phy.dev);
+					pr_err("%s: phy_reset msm_otg_ext_chg_ioctl.\n", __func__);
 				}
 			} else {
 				motg->ext_chg_active = INACTIVE;

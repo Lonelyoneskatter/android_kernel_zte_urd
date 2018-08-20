@@ -1,7 +1,7 @@
-/*! \file sx9500.c
+/*\file sx9500.c
  * \brief  SX9500 Driver
  *
- * Driver for the SX9500 
+ * Driver for the SX9500
  * Copyright (c) 2016 ZTE Corp
  *
  *  This program is free software; you can redistribute it and/or modify
@@ -25,25 +25,83 @@
 #include <linux/of_gpio.h>
 
 #include "sx9500.h"
+#include <linux/fb.h>
 
 #define IDLE 0
 #define ACTIVE 1
 
 #define SX9500_TAG                  "==ZTE-SX9500=="
-#define SX9500_DBG(fmt, args...)    printk(SX9500_TAG fmt, ##args) 
-#define SX9500_DBG2(fmt, args...)    //printk(SX9500_TAG  fmt, ##args) 
+#define SX9500_DBG(fmt, args...)    printk(SX9500_TAG fmt, ##args)
+#define SX9500_DBG2(fmt, args...)    //printk(SX9500_TAG  fmt, ##args)
 
-
+#ifdef CONFIG_BOARD_JASMINE
 static struct smtc_reg_data sx9500_i2c_reg_setup[] = {
   {
     .reg = SX9500_IRQ_ENABLE_REG,
     //.val = 0xFF,
-    .val = 0x60,
+    //.val = 0x60,
     //.val = 0x00,
+    .val = 0x60
+  },
+  {
+	.reg = SX9500_CPS_CTRL0_REG,
+	//.val = 0x2F,
+	.val = 0x21,
   },
   {
     .reg = SX9500_CPS_CTRL1_REG,
-    .val = 0x43,
+    .val = 0x03,
+  },
+  {
+    .reg = SX9500_CPS_CTRL2_REG,
+    .val = 0x6F,
+  },
+  {
+    .reg = SX9500_CPS_CTRL3_REG,
+    .val = 0x03,
+  },
+  {
+    .reg = SX9500_CPS_CTRL4_REG,
+    //.val = 0x20,
+    //.val = 0x30,
+    .val = 0xE0,
+  },
+  {
+    .reg = SX9500_CPS_CTRL5_REG,
+    //.val = 0x16,
+    .val = 0x0F,
+  },
+  {
+    .reg = SX9500_CPS_CTRL6_REG,
+    //.val = 0x04,
+    .val = 0x03,
+  },
+  {
+    .reg = SX9500_CPS_CTRL7_REG,
+    .val = 0x00,
+  },
+  {
+    .reg = SX9500_CPS_CTRL8_REG,
+    .val = 0x00,
+  },
+};
+#else
+static struct smtc_reg_data sx9500_i2c_reg_setup[] = {
+  {
+    .reg = SX9500_IRQ_ENABLE_REG,
+    //.val = 0xFF,
+    //.val = 0x60,
+    //.val = 0x00,
+    .val = 0x60
+  },
+  {
+	.reg = SX9500_CPS_CTRL0_REG,
+	//.val = 0x2F,
+	.val = 0x21,
+  },
+  {
+    .reg = SX9500_CPS_CTRL1_REG,
+    .val = 0x03,
   },
   {
     .reg = SX9500_CPS_CTRL2_REG,
@@ -55,34 +113,32 @@ static struct smtc_reg_data sx9500_i2c_reg_setup[] = {
   },
   {
     .reg = SX9500_CPS_CTRL4_REG,
-    .val = 0x20,
+    //.val = 0x20,
     //.val = 0x30,
+    .val = 0xE0,
   },
   {
     .reg = SX9500_CPS_CTRL5_REG,
-    .val = 0x16,
-    //.val = 0x0F,
+    //.val = 0x16,
+    .val = 0x0F,
   },
   {
     .reg = SX9500_CPS_CTRL6_REG,
-    .val = 0x06,
+    //.val = 0x06,
     //.val = 0x05,
     //.val = 0x08,
+    .val = 0x0F,
   },
   {
     .reg = SX9500_CPS_CTRL7_REG,
-    .val = 0x40,
+    .val = 0x00,
   },
   {
     .reg = SX9500_CPS_CTRL8_REG,
     .val = 0x00,
   },
-  {
-    .reg = SX9500_CPS_CTRL0_REG,
-    .val = 0x2F,
-    //.val = 0x21,
-  },
 };
+#endif
 
 static struct _buttonInfo psmtcButtons[] = {
   {
@@ -110,19 +166,19 @@ static struct _buttonInfo psmtcButtons[] = {
 #define MAX_NUM_STATUS_BITS 8
 
 typedef struct sx9500_chip sx9500_chip_t, *psx9500_chip_t;
-struct sx9500_chip 
+struct sx9500_chip
 {
   void * bus; /* either i2c_client or spi_client */
-  
+
   struct device *pdev; /* common device struction for linux */
 
   void *pDevice; /* device specific struct pointer */
 
 #if defined(USE_THREADED_IRQ)
   struct mutex mutex;
-#else  
+#else
   spinlock_t	      lock; /* Spin Lock used for nirq worker function */
-#endif 
+#endif
   int irq; /* irq number used */
 
   /* whether irq should be ignored.. cases if enable/disable irq is not used
@@ -135,6 +191,7 @@ struct sx9500_chip
 
   /* struct workqueue_struct	*ts_workq;  */  /* if want to use non default */
   struct delayed_work dworker; /* work struct for worker function */
+  struct delayed_work resume_worker; /* work struct for worker function */
 
   struct input_dev *pinput;
   struct _buttonInfo *buttons;
@@ -151,9 +208,14 @@ struct sx9500_chip
 #define SSD1306B_ACTIVE "sx9500_active"
 #define SSD1306B_SLEEP "sx9500_sleep"
 
+psx9500_chip_t g_sx9500_chip = 0;
+
 void sx9500_touchProcess(psx9500_chip_t chip);
 int initialize(psx9500_chip_t chip);
 int read_regStat(psx9500_chip_t chip);
+int manual_offset_calibration(psx9500_chip_t chip);
+
+unsigned char g_enable_log = 0;
 
 static int write_register(psx9500_chip_t chip, u8 address, u8 value)
 {
@@ -170,7 +232,7 @@ static int write_register(psx9500_chip_t chip, u8 address, u8 value)
 	  dev_dbg(&i2c->dev,"write_register Address: 0x%x Value: 0x%x Return: %d\n",
         address,value,returnValue);
   }
- 
+
   return returnValue;
 }
 
@@ -215,7 +277,7 @@ static int write_registerEx(psx9500_chip_t chip, unsigned char reg,
 
     ret = i2c_master_send(i2c, tx, size+1 );
 	  if (ret < 0)
-	  	dev_err(chip->pdev, "I2C write error\n");
+		dev_err(chip->pdev, "I2C write error\n");
   }
   dev_dbg(chip->pdev, "leaving write_registerEx()\n");
 
@@ -237,11 +299,11 @@ static int read_registerEx(psx9500_chip_t chip, unsigned char reg,
     dev_dbg(chip->pdev,
         "going to call i2c_master_send(0x%p,0x%p,1) Reg: 0x%x\n",
                                                                (void *)i2c,(void *)tx,tx[0]);
-  	ret = i2c_master_send(i2c,tx,1);
-  	if (ret >= 0) {
+	ret = i2c_master_send(i2c,tx,1);
+	if (ret >= 0) {
       dev_dbg(chip->pdev, "going to call i2c_master_recv(0x%p,0x%p,%x)\n",
                                                               (void *)i2c,(void *)data,size);
-  		ret = i2c_master_recv(i2c, data, size);
+		ret = i2c_master_recv(i2c, data, size);
     }
   }
 	if (unlikely(ret < 0))
@@ -320,7 +382,7 @@ static void sx9500_schedule_work(psx9500_chip_t chip, unsigned long delay)
   }
   else
     printk(KERN_ERR "%s, NULL psx9500_chip_t\n", __func__);
-} 
+}
 
 static irqreturn_t sx9500_irq(int irq, void *pvoid)
 {
@@ -340,11 +402,17 @@ static void sx9500_worker_func(struct work_struct *work)
 {
   psx9500_chip_t chip = 0;
   int status = 0;
+
+  unsigned char debug_reg[] = {0x20, 0x21, 0x22, 0x23, 0x24,0x25, 0x26, 0x27, 0x28, 0x7f};
+  int debug_index = 0;
+  unsigned char debug_reg_val;
+  int debug_size = 0;
+
   //u8 nirqLow = 0;
-  SX9500_DBG("%s enter \n", __func__);
+  //SX9500_DBG("%s enter \n", __func__);
   if (work) {
     chip = container_of(work,sx9500_chip_t,dworker.work);
-    
+
     if (!chip) {
       printk(KERN_ERR "%s, NULL psx9500_chip_t\n", __func__);
       return;
@@ -358,6 +426,17 @@ static void sx9500_worker_func(struct work_struct *work)
     status = read_regStat(chip);
 	//dev_info(chip->pdev, "Worker - Refresh Status %d\n",status);
     SX9500_DBG("%s Worker - Refresh Status %d\n", __func__, status);
+
+	if(g_enable_log)
+	{
+		debug_size = sizeof(debug_reg);
+		for(debug_index = 0;debug_index < debug_size; debug_index++)
+		{
+			read_register(chip, debug_reg[debug_index], &debug_reg_val);
+			printk("%s, sx9502 reg 0x%x value = 0x%x\n", __func__, debug_reg[debug_index], debug_reg_val);
+		}
+	}
+
 	if(BITGET(status,SX9500_TOUCH_BIT) || BITGET(status,SX9500_REASE_BIT))
 	  sx9500_touchProcess(chip);
 #if 0
@@ -368,7 +447,49 @@ static void sx9500_worker_func(struct work_struct *work)
     }
 #endif
   } else {
-    printk(KERN_ERR "%s, NULL work_struct\n", __func__);
+    //printk(KERN_ERR "%s, NULL work_struct\n", __func__);
+  }
+}
+
+static void sx9500_resume_worker_func(struct work_struct *work)
+{
+  psx9500_chip_t chip = 0;
+  struct input_dev *input = NULL;
+  u8 touchStatus = 0;
+
+  SX9500_DBG("%s enter \n", __func__);
+
+  if (work) {
+    chip = container_of(work,sx9500_chip_t,resume_worker.work);
+
+	if (!chip) {
+	  printk(KERN_ERR "%s, NULL psx9500_chip_t\n", __func__);
+	  return;
+	}
+
+	input = chip->pinput;
+
+	//manual_offset_calibration(chip);
+	read_regStat(chip);
+	// msleep(100);
+	read_register(chip, SX9500_TCHCMPSTAT_REG, &touchStatus);
+	SX9500_DBG("%s Refresh touch Status %d\n", __func__, touchStatus);
+
+	//manual_offset_calibration(chip);
+#if 0
+	if(touchStatus&0x10){
+		SX9500_DBG("%s key touch and report\n", __func__);
+		input_report_key(input, KEY_F20, 1);
+	} else {
+		SX9500_DBG("%s key release and report\n", __func__);
+		input_report_key(input, KEY_F20, 0);
+	}
+	input_sync(input);
+#endif
+
+	//enable irq
+	//enable_irq(chip->irq);
+	//chip->irq_disabled = 0;
   }
 }
 #endif
@@ -388,12 +509,21 @@ int sx9500_init(psx9500_chip_t chip)
 
     if(chip->pinctrl)
     {
-    	err = pinctrl_select_state(chip->pinctrl, chip->sx9500_active);
-    	if (err) {
-    		printk("select sx9500_active failed with %d\n", err);
-    		return err;
-    	}
-    }
+		err = pinctrl_select_state(chip->pinctrl, chip->sx9500_sleep);
+		if (err) {
+			printk("select sx9500_sleep failed with %d\n", err);
+			return err;
+		}
+
+		msleep(10);
+
+		err = pinctrl_select_state(chip->pinctrl, chip->sx9500_active);
+		if (err) {
+			printk("select sx9500_active failed with %d\n", err);
+			return err;
+		}
+		msleep(10);
+	}
 
 #ifdef USE_THREADED_IRQ
     /* initialize worker function */
@@ -409,15 +539,16 @@ int sx9500_init(psx9500_chip_t chip)
                               chip);
 #else
     /* initialize spin lock */
-  	spin_lock_init(&chip->lock);
+	spin_lock_init(&chip->lock);
 
     /* initialize worker function */
-	  INIT_DELAYED_WORK(&chip->dworker, sx9500_worker_func);
+	INIT_DELAYED_WORK(&chip->dworker, sx9500_worker_func);
+	INIT_DELAYED_WORK(&chip->resume_worker, sx9500_resume_worker_func);
 
     /* initailize interrupt reporting */
     chip->irq_disabled = 0;
 	  err = request_irq(chip->irq, sx9500_irq, IRQF_TRIGGER_FALLING,
-		                          	chip->pdev->driver->name, chip);
+					chip->pdev->driver->name, chip);
 #endif
 	  if (err) {
 		  dev_err(chip->pdev, "irq %d busy?\n", chip->irq);
@@ -434,19 +565,19 @@ int sx9500_init(psx9500_chip_t chip)
         dev_info(chip->pdev, "Succed to initialize\n");
         return 0;
     }
-    
+
     dev_err(chip->pdev,"fail to initialize\n");
   }
-  
+
   return -ENOMEM;
 }
 
 /*********************************************************************/
 /*! \brief Perform a manual offset calibration
-* \param this Pointer to main parent struct 
+* \param this Pointer to main parent struct
 * \return Value return value from the write register
  */
-static int manual_offset_calibration(psx9500_chip_t chip)
+int manual_offset_calibration(psx9500_chip_t chip)
 {
   s32 returnValue = 0;
   returnValue = write_register(chip,SX9500_IRQSTAT_REG,0xFF);
@@ -478,6 +609,7 @@ static ssize_t manual_offset_calibration_store(struct device *dev,
 		return -EINVAL;
   if (val) {
     dev_info( chip->pdev, "Performing manual_offset_calibration()\n");
+    SX9500_DBG("%s val=%ld\n", __func__, val);
     manual_offset_calibration(chip);
   }
   return count;
@@ -485,6 +617,122 @@ static ssize_t manual_offset_calibration_store(struct device *dev,
 
 static DEVICE_ATTR(calibrate, 0664, manual_offset_calibration_show,
                                 manual_offset_calibration_store);
+
+unsigned char g_debug_reg = 0;
+
+static ssize_t regval_show(struct device *dev,
+				     struct device_attribute *attr, char *buf)
+{
+	psx9500_chip_t chip = dev_get_drvdata(dev);
+
+	unsigned char debug_reg[] = {0x0, 0x1, 0x2, 0x3, 0x4, 0x5, 0x6, 0x7, 0x8, 0x9, 0xA, 0xB, 0xC, 0xD, 0xE,
+	  0x20, 0x21, 0x22, 0x23, 0x24,0x25, 0x26, 0x27, 0x28, 0x7f};
+	int debug_index = 0;
+	unsigned char debug_reg_val;
+	int reg_count = 0;
+	int return_size = 0;
+
+	reg_count = sizeof(debug_reg);
+	for(debug_index = 0; debug_index < reg_count; debug_index++)
+	{
+		read_register(chip, debug_reg[debug_index], &debug_reg_val);
+		//printk("jiangfeng %s, sx9502 reg 0x%x value = 0x%x\n", __func__, debug_reg[debug_index], debug_reg_val);
+		return_size += sprintf(buf + return_size, "sx9502 reg 0x%x value = 0x%x\n",debug_reg[debug_index], debug_reg_val);
+	}
+	//return sprintf(buf, "success\n");
+	return return_size;
+}
+
+static ssize_t regval_store(struct device *dev,
+				     struct device_attribute *attr,
+				     const char *buf, size_t count)
+{
+	psx9500_chip_t chip = dev_get_drvdata(dev);
+	unsigned long val;
+	unsigned reg_val;
+	if (strict_strtoul(buf, 0, &val))
+		return -EINVAL;
+	reg_val = val;
+	write_register(chip, g_debug_reg, val);
+	return count;
+}
+static DEVICE_ATTR(regval, 0664, regval_show,
+                                regval_store);
+
+static ssize_t reg_show(struct device *dev,
+				     struct device_attribute *attr, char *buf)
+{
+	return sprintf(buf, "0x%x\n", g_debug_reg);
+}
+
+static ssize_t reg_store(struct device *dev,
+				     struct device_attribute *attr,
+				     const char *buf, size_t count)
+{
+	unsigned long val;
+	if (strict_strtoul(buf, 0, &val))
+		return -EINVAL;
+
+	g_debug_reg = val;
+
+	return count;
+}
+static DEVICE_ATTR(reg, 0664, reg_show,
+                                reg_store);
+
+static ssize_t status_show(struct device *dev,
+				     struct device_attribute *attr, char *buf)
+{
+	psx9500_chip_t chip = dev_get_drvdata(dev);
+	u8 touchStatus = 0;
+
+	read_register(chip, SX9500_IRQ_ENABLE_REG, &touchStatus);
+	if(!touchStatus)
+		return sprintf(buf, "0\n");
+
+	read_register(chip, SX9500_TCHCMPSTAT_REG, &touchStatus);
+	if(touchStatus&0x10){
+		return sprintf(buf, "1\n");
+	} else {
+		return sprintf(buf, "0\n");
+	}
+}
+
+static DEVICE_ATTR(status, 0664, status_show,
+                                NULL);
+
+static ssize_t enable_log_show(struct device *dev,
+				     struct device_attribute *attr, char *buf)
+{
+	return sprintf(buf, "0x%x\n", g_enable_log);
+}
+
+static ssize_t enable_log_store(struct device *dev,
+				     struct device_attribute *attr,
+				     const char *buf, size_t count)
+{
+	unsigned long val;
+	psx9500_chip_t chip = dev_get_drvdata(dev);
+	if (strict_strtoul(buf, 0, &val))
+		return -EINVAL;
+
+	g_enable_log = val;
+	if(g_enable_log)
+	{
+		write_register(chip,SX9500_IRQ_ENABLE_REG,0x78);
+		enable_irq_wake(chip->irq);
+	}
+	else
+	{
+		write_register(chip,SX9500_IRQ_ENABLE_REG,0x60);
+		disable_irq_wake(chip->irq);
+	}
+
+	return count;
+}
+static DEVICE_ATTR(enable_log, 0664, enable_log_show,
+                                enable_log_store);
+
 
 /*! \brief sysfs show function for enabling irq which currently just
  * returns register value.
@@ -517,12 +765,12 @@ static ssize_t enable_sx9500_irq_store(struct device *dev,
   if (strict_strtoul(buf, 0, &val))
     return -EINVAL;
   SX9500_DBG("%s enter(val=%ld)\n", __func__, val);
-  
+
   if (val) {
     SX9500_DBG("%s enable sx9500 disable=%d\n", __func__, chip->irq_disabled);
     if(chip->irq_disabled){
         if (chip) {
-            read_regStat(chip);           
+            read_regStat(chip);
             // msleep(100);
             read_register(chip, SX9500_TCHCMPSTAT_REG, &touchStatus);
             SX9500_DBG("%s Refresh touch Status %d\n", __func__, touchStatus);
@@ -534,7 +782,7 @@ static ssize_t enable_sx9500_irq_store(struct device *dev,
                 input_report_key(input, KEY_F20, 0);
             }
             input_sync(input);
-            
+
             //enable irq
             enable_irq(chip->irq);
             chip->irq_disabled = 0;
@@ -591,7 +839,7 @@ static ssize_t sx9500_set_threshold_store(struct device *dev,
   if (strict_strtoul(buf, 0, &val))
     return -EINVAL;
   SX9500_DBG("%s enter(val=%ld)\n", __func__, val);
-  
+
   if (val>=0 && val<32) {
     SX9500_DBG("%s set threshold\n", __func__);
     write_register(chip,SX9500_CPS_CTRL6_REG,val);
@@ -639,29 +887,29 @@ static void hw_init(psx9500_chip_t chip)
 /*********************************************************************/
 
 int initialize(psx9500_chip_t chip)
-{  
+{
   SX9500_DBG("%s enter \n", __func__);
-   
+
   if (chip) {
     /* prepare reset by disabling any irq handling */
     chip->irq_disabled = 1;
     disable_irq(chip->irq);
     /* perform a reset */
-    write_register(chip,SX9500_SOFTRESET_REG,SX9500_SOFTRESET);
+    //write_register(chip,SX9500_SOFTRESET_REG,SX9500_SOFTRESET);
     /* wait until the reset has finished by monitoring NIRQ */
     dev_dbg(chip->pdev, "Sent Software Reset. Waiting until device is back from reset to continue.\n");
     /* just sleep for awhile instead of using a loop with reading irq status */
-    msleep(300);
+    msleep(1);
 //    while(chip->get_nirq_low && chip->get_nirq_low()) { read_regStat(chip); }
     hw_init(chip);
-    msleep(100); /* make sure everything is running */
+    msleep(50); /* make sure everything is running */
     manual_offset_calibration(chip);
-    
+
     /* re-enable interrupt handling */
     enable_irq(chip->irq);
     chip->irq_disabled = 0;
     //enable_irq_wake(chip->irq);
-   
+
     /* make sure no interrupts are pending since enabling irq will only
      * work on next falling edge */
     read_regStat(chip);
@@ -677,11 +925,11 @@ void sx9500_touchProcess(psx9500_chip_t chip)
   int numberOfButtons = 0;
   struct _buttonInfo *buttons = NULL;
   struct input_dev *input = NULL;
-  
+
   struct _buttonInfo *pCurrentButton  = NULL;
 
   SX9500_DBG("%s enter \n", __func__);
-  
+
   if (chip)
   {
     dev_dbg(chip->pdev, "Inside %s\n", __func__);
@@ -690,7 +938,7 @@ void sx9500_touchProcess(psx9500_chip_t chip)
     buttons = chip->buttons;
     input = chip->pinput;
     numberOfButtons = chip->buttonSize;
-    
+
     if (unlikely( (buttons==NULL) || (input==NULL) )) {
       dev_err(chip->pdev, "ERROR!! buttons or input NULL!!!\n");
       return;
@@ -710,17 +958,25 @@ void sx9500_touchProcess(psx9500_chip_t chip)
             dev_info(chip->pdev, "cap button %d touched\n", counter);
             SX9500_DBG("%s touch keycode is %d \n", __func__, pCurrentButton->keycode);
             input_report_key(input, pCurrentButton->keycode, 1);
+            #ifdef CONFIG_BOARD_JASMINE
+            //write_register(chip,SX9500_CPS_CTRL6_REG,0x7);
+            write_register(chip,SX9500_CPS_CTRL6_REG,0x6);
+            #endif
             pCurrentButton->state = ACTIVE;
           } else {
             dev_info(chip->pdev, "Button %d already released.\n",counter);
           }
           break;
-        case ACTIVE: /* Button is being touched! */ 
+        case ACTIVE: /* Button is being touched! */
           if (((touchStatus & pCurrentButton->mask) != pCurrentButton->mask)) {
             /* User released button */
-            dev_info(chip->pdev, "cap button %d released\n",counter);      
+            dev_info(chip->pdev, "cap button %d released\n",counter);
             SX9500_DBG("%s release keycode is %d \n", __func__, pCurrentButton->keycode);
             input_report_key(input, pCurrentButton->keycode, 0);
+            #ifdef CONFIG_BOARD_JASMINE
+            //write_register(chip,SX9500_CPS_CTRL6_REG,0x4);
+            write_register(chip,SX9500_CPS_CTRL6_REG,0x3);
+            #endif
             pCurrentButton->state = IDLE;
           } else {
             dev_info(chip->pdev, "Button %d still touched.\n",counter);
@@ -733,7 +989,7 @@ void sx9500_touchProcess(psx9500_chip_t chip)
     input_sync(input);
 
 	  dev_dbg(chip->pdev, "Leaving %s\n", __func__);
-	  //printk("jiangfeng %s success\n", __func__);	  
+	  //printk("jiangfeng %s success\n", __func__);
       SX9500_DBG("%s success \n", __func__);
   }
 }
@@ -743,6 +999,27 @@ static int sx9500_parse_dt(psx9500_chip_t chip)
     SX9500_DBG("%s enter \n", __func__);
 	return 0;
 }
+
+static int sx9500_fb_callback(struct notifier_block *nfb,
+				 unsigned long event, void *data)
+{
+	struct fb_event *evdata = data;
+	int *blank;
+
+	if (evdata && evdata->data && event == FB_EVENT_BLANK) {
+		blank = evdata->data;
+		if (*blank == FB_BLANK_UNBLANK){
+			if(g_sx9500_chip)
+				manual_offset_calibration(g_sx9500_chip);
+		}
+	}
+
+	return 0;
+}
+
+static struct notifier_block __refdata sx9500_fb_notifier = {
+	.notifier_call = sx9500_fb_callback,
+};
 
 static int sx9500_probe(struct i2c_client *client, const struct i2c_device_id *id)
 {
@@ -763,12 +1040,12 @@ static int sx9500_probe(struct i2c_client *client, const struct i2c_device_id *i
 
   chip = kzalloc(sizeof(sx9500_chip_t), GFP_KERNEL); /* create memory for main struct */
 	dev_dbg(&client->dev, "\t Initialized Main Memory: 0x%p\n",chip);
-  
+
   if (chip)
   {
 	chip->bus = client;
 	chip->pdev = &client->dev;
-  	sx9500_parse_dt(chip);
+	sx9500_parse_dt(chip);
 
 	chip->buttons = psmtcButtons;
 	chip->buttonSize = ARRAY_SIZE(psmtcButtons);
@@ -787,6 +1064,10 @@ static int sx9500_probe(struct i2c_client *client, const struct i2c_device_id *i
 	device_create_file(chip->pdev, &dev_attr_calibrate);
     device_create_file(chip->pdev, &dev_attr_enable);
     device_create_file(chip->pdev, &dev_attr_set_threshold);
+    device_create_file(chip->pdev, &dev_attr_regval);
+    device_create_file(chip->pdev, &dev_attr_reg);
+    device_create_file(chip->pdev, &dev_attr_status);
+    device_create_file(chip->pdev, &dev_attr_enable_log);
 
     /* Create the input device */
     input = input_allocate_device();
@@ -868,6 +1149,9 @@ static int sx9500_probe(struct i2c_client *client, const struct i2c_device_id *i
 
 	sx9500_init(chip);
 
+	g_sx9500_chip = chip;
+	fb_register_client(&sx9500_fb_notifier);
+
 	//printk("jiangfeng %s success\n", __func__);
     SX9500_DBG("%s success \n", __func__);
     return  0;
@@ -907,16 +1191,16 @@ static int sx9500_suspend(struct device *dev)
 {
   struct i2c_client *client = to_i2c_client(dev);
   psx9500_chip_t chip = i2c_get_clientdata(client);
-  struct input_dev *input = NULL;
-  
-  input = chip->pinput;
+  //struct input_dev *input = NULL;
+
+  //input = chip->pinput;
   SX9500_DBG("%s enter \n", __func__);
   if (chip){
-    SX9500_DBG("%s report far when diabling sar\n", __func__);
-    input_report_key(input, KEY_F20, 0);
-    input_sync(input);
-    disable_irq(chip->irq);
-    chip->irq_disabled = 1;
+    //SX9500_DBG("%s report far when diabling sar\n", __func__);
+    //input_report_key(input, KEY_F20, 0);
+    //input_sync(input);
+    //disable_irq(chip->irq);
+    //chip->irq_disabled = 1;
   }
  return 0;
 }
@@ -925,30 +1209,9 @@ static int sx9500_resume(struct device *dev)
 {
   struct i2c_client *client = to_i2c_client(dev);
   psx9500_chip_t chip = i2c_get_clientdata(client);
-  struct input_dev *input = NULL;
-  u8 touchStatus = 0;
 
-  input = chip->pinput;
-  SX9500_DBG("%s enter \n", __func__);
-  
-  if (chip) {
-      read_regStat(chip);           
-      // msleep(100);
-      read_register(chip, SX9500_TCHCMPSTAT_REG, &touchStatus);
-      SX9500_DBG("%s Refresh touch Status %d\n", __func__, touchStatus);
-      if(touchStatus&0x10){
-          SX9500_DBG("%s key touch and report\n", __func__);
-          input_report_key(input, KEY_F20, 1);
-      } else {
-          SX9500_DBG("%s key release and report\n", __func__);
-          input_report_key(input, KEY_F20, 0);
-      }
-      input_sync(input);
-
-      //enable irq
-      enable_irq(chip->irq);
-      chip->irq_disabled = 0;
-  }
+	cancel_delayed_work(&chip->resume_worker);
+	schedule_delayed_work(&chip->resume_worker,HZ/4);
 
   return 0;
 }

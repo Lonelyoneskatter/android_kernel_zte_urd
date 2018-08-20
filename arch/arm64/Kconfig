@@ -300,6 +300,13 @@ config BOARD_URD
     help
       Support for ZTE MSM8916 URD device.
 
+config BOARD_GEVJON
+    depends on ARCH_MSM8916
+    select ZTE_BOARD_ID
+    bool "ZTE GEVJON"
+    help
+      Support for ZTE MSM8916 GEVJON device.
+
 endmenu
 
 menu "Bus support"

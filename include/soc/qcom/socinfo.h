@@ -54,11 +54,12 @@ int socinfo_get_ftm_flag(void);
 int socinfo_get_ffbm_flag(void);
 
 void socinfo_set_hw_ver(char *ver);
+#if defined(CONFIG_BOARD_JASMINE) || defined(CONFIG_BOARD_GEVJON)
 /*
  * Support for marking sw version by ZTE_BOOT
 */
 void socinfo_sync_sysfs_zte_sw_ver(const char *sw_ver);
-
+#endif
 void socinfo_set_fp_hw(int val);
 int socinfo_get_fp_hw(void);
 #endif

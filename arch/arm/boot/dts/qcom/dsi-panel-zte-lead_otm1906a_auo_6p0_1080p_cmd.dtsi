@@ -48,7 +48,13 @@
 		
 		qcom,mdss-dsi-lp11-init;
 		//qcom,mdss-dsi-init-delay-us = <5000>;
-		
+
+		qcom,esd-check-enabled;
+		qcom,mdss-dsi-panel-status-command=[06 01 00 01 05 00 01 0e] ;
+		qcom,mdss-dsi-panel-status-command-state="dsi_lp_mode";
+		qcom,mdss-dsi-panel-status-check-mode="reg_read";
+		qcom,mdss-dsi-panel-status-value=<0x80>;
+  
 		qcom,mdss-dsi-bllp-eof-power-mode;
 		qcom,mdss-dsi-bllp-power-mode;
 		qcom,mdss-dsi-lane-0-state;
@@ -231,6 +237,7 @@
 	39 01 00 00 00 00 02 00 00 //disable cmd2
 	39 01 00 00 00 00 04 FF 00 00 00 
 
+	39 01 00 00 00 00 03 44 02 00 //TE releated,for display issue wangjingyi 20160919
 
 	05 01 00 00 78 00 02 11 00 
 	05 01 00 00 0a 00 02 29 00

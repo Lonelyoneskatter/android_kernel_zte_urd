@@ -77,6 +77,8 @@ struct synaptics_dsx_platform_data {
 	u32 irq_flags;
 	u32 reset_flags;
 	unsigned reset_gpio;
+	unsigned lcd_gpio_1;
+	unsigned lcd_gpio_2;
 	unsigned panel_minx;
 	unsigned panel_miny;
 	unsigned panel_maxx;

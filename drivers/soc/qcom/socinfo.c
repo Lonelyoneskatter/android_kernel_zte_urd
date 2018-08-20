@@ -1080,7 +1080,7 @@ static struct device_attribute zte_hw_ver =
 	__ATTR(zte_hw_ver, S_IRUGO, socinfo_show_zte_hw_ver, NULL);
 #endif
 
-#ifdef CONFIG_BOARD_JASMINE
+#if defined(CONFIG_BOARD_JASMINE) || defined(CONFIG_BOARD_GEVJON)
 /*
  * Support for marking sw version PV or Normal by ZTE_BOOT
  */
@@ -1197,7 +1197,7 @@ static void __init populate_soc_sysfs_files(struct device *msm_soc_device)
 #ifdef CONFIG_ZTE_BOOT_MODE
 	device_create_file(msm_soc_device, &zte_hw_ver);
 #endif
-#ifdef CONFIG_BOARD_JASMINE
+#if defined(CONFIG_BOARD_JASMINE) || defined(CONFIG_BOARD_GEVJON)
 	device_create_file(msm_soc_device, &zte_sw_ver);
 #endif
 

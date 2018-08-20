@@ -89,7 +89,7 @@ static void print_boot_stats(void)
 		mpm_counter_freq);
 }
 
-#ifdef CONFIG_BOARD_JASMINE
+#if defined(CONFIG_BOARD_JASMINE) || defined(CONFIG_BOARD_GEVJON)
 /*
  * Support for marking sw version by ZTE_BOOT
 */
@@ -125,7 +125,7 @@ const char* read_zte_sw_ver(void)
 int boot_stats_init(void)
 {
 	int ret;
-#ifdef CONFIG_BOARD_JASMINE
+#if defined(CONFIG_BOARD_JASMINE) || defined(CONFIG_BOARD_GEVJON)
 	const char *sw_ver = NULL;
 
 	sw_ver = read_zte_sw_ver();

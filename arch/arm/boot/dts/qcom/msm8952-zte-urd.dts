@@ -20,6 +20,8 @@
 #include "dsi-panel-zte-tm-nt35695-tm-6p0-1080p-video.dtsi"
 #include "dsi-panel-zte-YASSY-HX8399-auo-6p0-1080p-video.dtsi"
 #include "dsi-panel-zte-lead_otm1906a_auo_6p0_1080p_cmd.dtsi"
+#include "dsi-panel-zte-truly-nt35695-auo-6p0-1080p-video.dtsi"
+#include "dsi-panel-zte-dijing-nt35695-auo-6p0-1080p-video.dtsi"
 
 / {
 	model = "Qualcomm Technologies, Inc.ZTE MSM8952 URD";
@@ -72,6 +74,14 @@
 	qcom,panel-supply-entries = <&dsi_panel_pwr_supply>;
 	qcom,ulps-enabled;
 	qcom,panel-roi-alignment = <2 2 4 2 1080 2>;
+};
+&dsi_TRULY_NT35695_AUO_6p0_1080P_video_vid {
+	qcom,panel-supply-entries = <&dsi_panel_pwr_supply>;
+	qcom,ulps-enabled;
+};
+&dsi_dijing_nt35695_auo_6p0_1080P_video_vid {
+	qcom,panel-supply-entries = <&dsi_panel_pwr_supply>;
+	qcom,ulps-enabled;
 };
 &pmi8950_charger {
 	qcom,float-voltage-mv = <4400>;

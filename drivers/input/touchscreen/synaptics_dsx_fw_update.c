@@ -66,9 +66,6 @@
 #define MAX_IMAGE_NAME_LEN 256
 #define PRODUCT_ID_SIZE 10
 
-
-
-
 #define REG_MAP (1 << 0)
 #define UNLOCKED (1 << 1)
 #define HAS_CONFIG_ID (1 << 2)
@@ -81,6 +78,8 @@
 #define BLOCK_DATA_OFFSET 2
 
 #define NAME_BUFFER_SIZE 128
+
+extern int socinfo_get_ftm_flag(void);
 
 enum flash_config_area {
 	UI_CONFIG_AREA		= 0x00,
@@ -125,6 +124,14 @@ enum image_file_option {
 #define POLLING_MODE 0
 
 #define SLEEP_TIME_US 50
+
+extern int offcharging_flag;
+extern int syna_update_flag;
+#ifdef CONFIG_BOARD_URD
+#define LCD_TRULY "TRULY"
+#define LCD_LEAD "LEAD"
+extern char *lcd_module_id;
+#endif
 
 static ssize_t fwu_sysfs_show_image(struct file *data_file,
 		struct kobject *kobj, struct bin_attribute *attributes,
@@ -751,27 +758,10 @@ static enum flash_area fwu_go_nogo(struct image_header *header)
 		}
 	}
 
-	dev_dbg(&i2c_client->dev,
-			"%s: Device firmware id %d, .img firmware id %d\n",
-			__func__,
-			deviceFirmwareID,
-			(unsigned int)imageFirmwareID);
-	
-	/*if (imageFirmwareID > deviceFirmwareID) {
-		flash_area = UI_FIRMWARE;
-		goto exit;
-	} else if (imageFirmwareID < deviceFirmwareID) {
-		flash_area = NONE;
-		dev_info(&i2c_client->dev,
-			"%s: Img fw is older than device fw. Skip fw update.\n",
-			__func__);
-		goto exit;
-	}*/
-	
-	if (imageFirmwareID != deviceFirmwareID) {
-		flash_area = UI_FIRMWARE;
-		goto exit;
-	}
+	printk("%s: Device firmware id %d, .img firmware id %d\n",
+		__func__,
+		deviceFirmwareID,
+		(unsigned int)imageFirmwareID);
 
 	/* device config id */
 	retval = fwu->fn_ptr->read(fwu->rmi4_data,
@@ -788,26 +778,43 @@ static enum flash_area fwu_go_nogo(struct image_header *header)
 	}
 	deviceConfigID =  extract_uint_be(config_id);
 
-	dev_dbg(&i2c_client->dev,
-		"%s: Device config ID 0x%02X, 0x%02X, 0x%02X, 0x%02X\n",
+	printk("%s: Device config ID 0x%02X, 0x%02X, 0x%02X, 0x%02X\n",
 		__func__,
 		config_id[0], config_id[1], config_id[2], config_id[3]);
 
 	/* .img config id */
-	dev_dbg(&i2c_client->dev,
-			"%s .img config ID 0x%02X, 0x%02X, 0x%02X, 0x%02X\n",
-			__func__,
-			fwu->config_data[0],
-			fwu->config_data[1],
-			fwu->config_data[2],
-			fwu->config_data[3]);
+	printk("%s .img config ID 0x%02X, 0x%02X, 0x%02X, 0x%02X\n",
+		__func__,
+		fwu->config_data[0],
+		fwu->config_data[1],
+		fwu->config_data[2],
+		fwu->config_data[3]);
 	imageConfigID =  extract_uint_be(fwu->config_data);
 
-	dev_dbg(&i2c_client->dev,
-		"%s: Device config ID %d, .img config ID %d\n",
+	printk("%s: Device config ID %d, .img config ID %d\n",
 		__func__, deviceConfigID, imageConfigID);
 
-	if (imageConfigID > deviceConfigID) {
+#ifdef CONFIG_BOARD_URD
+	if (!strcmp(lcd_module_id, LCD_TRULY)) {
+		if (config_id[2] != 0x31) {
+			flash_area = UI_FIRMWARE;
+			goto exit;
+		}
+	} else if (!strcmp(lcd_module_id, LCD_LEAD)) {
+		if (config_id[2] != 0x30) {
+			flash_area = UI_FIRMWARE;
+			goto exit;
+		}
+	}
+#endif
+
+	if (imageConfigID <= deviceConfigID) {
+		flash_area = NONE;
+		goto exit;
+	} else if (imageFirmwareID != deviceFirmwareID) {
+		flash_area = UI_FIRMWARE;
+		goto exit;
+	} else {
 		flash_area = CONFIG_AREA;
 		goto exit;
 	}
@@ -1562,12 +1569,12 @@ char *syna_file_name;
 
 		if(!syna_file_name){
 			printk("syna fw name is null\n");
-			return -1;
+			return -EINVAL;
 		}
 		if(!strcmp(syna_file_name,""))
 		{
 			printk("%s file_name is null\n",__func__);
-			return -1;
+			return -EINVAL;
 		}
 
 
@@ -1585,7 +1592,7 @@ char *syna_file_name;
 			dev_err(&fwu->rmi4_data->i2c_client->dev,
 					"%s: Firmware image %s not available\n",
 					__func__, fwu->firmware_name);
-			printk("pingzhenghai:request error!");
+			printk("pingzhenghai:request error!\n");
 			retval = -EINVAL;
 			goto exit;
 		}
@@ -1696,21 +1703,35 @@ static void fwu_startup_fw_update_work(struct work_struct *work)
 {
 
 	static unsigned char do_once = 1;
+	int retval = 0;
 #ifdef WAIT_FOR_FB_READY
 	unsigned int timeout;
 	struct synaptics_rmi4_data *rmi4_data = fwu->rmi4_data;
 #endif
 
+	syna_update_flag = 1;
+
 	if (!do_once)
-		return;
+		goto exit;;
 	do_once = 0;
-	
-	printk("pzh:Enter fwu_startup_fw_update_work\n");
+
+	if (offcharging_flag == 1) {
+		printk("%s:boot mode is offcharging and do not auto update!\n", __func__);
+		syna_update_flag = 2;
+		goto exit;;
+	} else if (socinfo_get_ftm_flag()) {
+		printk("%s:ftm mode and do not auto update!\n", __func__);
+		syna_update_flag = 2;
+		goto exit;;
+	} else {
+		printk("%s:start auto updating!\n", __func__);
+	}
 
 #ifdef WAIT_FOR_FB_READY
 	timeout = FB_READY_TIMEOUT_S * 1000 / FB_READY_WAIT_MS + 1;
-printk("pingzhenghai:fb_ready=%s", rmi4_data->fb_ready==true?"true":"false");
+	printk("%s:fb_ready=%s\n", __func__, rmi4_data->fb_ready==true?"true":"false");
 	while (!rmi4_data->fb_ready) {
+		syna_update_flag = 3;
 		msleep(FB_READY_WAIT_MS);
 		timeout--;
 		if (timeout == 0) {
@@ -1718,13 +1739,26 @@ printk("pingzhenghai:fb_ready=%s", rmi4_data->fb_ready==true?"true":"false");
 					"%s: Timed out waiting for FB ready\n",
 					__func__);*/
 			printk("Timed out waiting for FB ready\n");
-			return;
+			goto exit;;
 		}
 	}
 #endif
-	printk("pingzhenghai:fb_ready=%s", rmi4_data->fb_ready==true?"true":"false");
+	printk("%s:fb_ready=%s\n", __func__, rmi4_data->fb_ready==true?"true":"false");
 
-	synaptics_fw_updater(NULL);
+	syna_update_flag = 1;
+
+	retval = synaptics_fw_updater(NULL);
+	if (retval) {
+		syna_update_flag = 3;
+	} else {
+		syna_update_flag = 2;
+	}
+
+exit:
+#ifdef ZTE_FASTMMI_MANUFACTURING_VERSION
+	rmi4_data->stay_awake = false;
+	printk("%s:stay_awake=%d\n", __func__, rmi4_data->stay_awake);
+#endif
 
 	return;
 }
@@ -2190,10 +2224,14 @@ static ssize_t syna_fwupdate_store(struct device *dev,
 	syna_file_name=fwname;
 
 	fwu->force_update = false;
-	if(0 == fwu_start_reflash())
+	syna_update_flag = 1;
+	if (0 == fwu_start_reflash()) {
+		syna_update_flag = 2;
 		pr_info("%s: update success \n", __func__);
-	else
+	} else {
+		syna_update_flag = 3;
 		pr_info("%s: update fail  \n", __func__);
+	}
 
 	return count;
 }
@@ -2214,11 +2252,14 @@ static ssize_t syna_force_fwupdate_store(struct device *dev,
 	syna_file_name=fwname;
 
 	fwu->force_update = true;
-
-	if(0 == fwu_start_reflash())
+	syna_update_flag = 1;
+	if (0 == fwu_start_reflash()) {
+		syna_update_flag = 2;
 		pr_info("%s: update success \n", __func__);
-	else
+	} else {
+		syna_update_flag = 3;
 		pr_info("%s: update fail  \n", __func__);
+	}
 
 	return count;
 }

@@ -339,7 +339,7 @@ int ip_output(struct sk_buff *skb)
 		struct tcphdr *th = (struct tcphdr *) (skb->data+(iph->ihl<<2));
 
 /*ignore checking tcp pkts correct*/
-              pr_info("[IP]  TCP SEND len = %d, %d (%s) [%d (%s)],  (%s:%d -> %s:%d),F:%d%d%d%d%d%d%d%d\n", 
+              pr_info("[IP]  TCP SEND len = %d, Gpid:%d (%s) [pid:%d (%s)],  (%s:%d -> %s:%d),F:%d%d%d%d%d%d%d%d\n", 
 			     ntohs(iph->tot_len),
 			     current->group_leader->pid, current->group_leader->comm,
                           current->pid, current->comm,
@@ -351,7 +351,7 @@ int ip_output(struct sk_buff *skb)
 	 {
 	       struct udphdr *uh = (struct udphdr *)(skb->data+(iph->ihl<<2));
 /*ignore checking udp pkts correct*/
-              pr_info("[IP]  UDP SEND len = %d, %d (%s) [%d (%s)],  (%s:%d -> %s:%d)\n", 
+              pr_info("[IP]  UDP SEND len = %d, Gpid:%d (%s) [pid:%d (%s)],  (%s:%d -> %s:%d)\n", 
 			     ntohs(iph->tot_len),
 			     current->group_leader->pid, current->group_leader->comm,
                           current->pid, current->comm,
@@ -363,7 +363,7 @@ int ip_output(struct sk_buff *skb)
 	      struct icmphdr *icmph = (struct icmphdr *)(skb->data+(iph->ihl<<2));
 
 /*ignore checking icmp pkts correct*/
-              pr_info("[IP]  ICMP SEND len = %d, %d (%s) [%d (%s)],  (%s -> %s) , T: %d,C: %d\n", 
+              pr_info("[IP]  ICMP SEND len = %d, Gpid:%d (%s) [pid:%d (%s)],  (%s -> %s) , T: %d,C: %d\n", 
 			     ntohs(iph->tot_len),
 			     current->group_leader->pid, current->group_leader->comm,
                           current->pid, current->comm,
@@ -373,7 +373,7 @@ int ip_output(struct sk_buff *skb)
 	 }	 
 	 else
 	 {
-            pr_info("[IP]  SEND len = %d, %d (%s) [%d (%s)], (%s -> %s), TP = %d \n", 
+            pr_info("[IP]  SEND len = %d, Gpid:%d (%s) [pid:%d (%s)], (%s -> %s), TP = %d \n", 
 			     ntohs(iph->tot_len),
 	                   current->group_leader->pid, current->group_leader->comm,			     
                           current->pid, current->comm,

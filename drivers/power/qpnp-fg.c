@@ -224,7 +224,7 @@ enum fg_mem_data_index {
 static struct fg_mem_setting settings[FG_MEM_SETTING_MAX] = {
 	/*       ID                    Address, Offset, Value*/
 	SETTING(SOFT_COLD,       0x454,   0,      20),
-	SETTING(SOFT_HOT,        0x454,   1,      430),
+	SETTING(SOFT_HOT,        0x454,   1,      450),
 	SETTING(HARD_COLD,       0x454,   2,      0),
 	SETTING(HARD_HOT,        0x454,   3,      500),
 	SETTING(RESUME_SOC,      0x45C,   1,      99),

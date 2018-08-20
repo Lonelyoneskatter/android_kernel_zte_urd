@@ -43,6 +43,15 @@
 #define 	SENSOR_INFO_MODULE_ID_SAMSUNG 0X0033
 #define 	SENSOR_INFO_MODULE_ID_KARR 0X0002
 
+/*
+* Post compatible module info to vendor.by FENGYUAO_20150528.
+*/
+#define SENSOR_NAME_MAX_SIZE 32
+char post_sensor_module_name[SENSOR_NAME_MAX_SIZE];
+static char post_chromtix_lib_name[SENSOR_NAME_MAX_SIZE];
+static char post_default_chromtix_lib_name[SENSOR_NAME_MAX_SIZE];
+/* end */
+
 enum {
 	Invlid_Group,
 	Group_One,
@@ -211,7 +220,6 @@ MODULE_Map_Table S5K3L2_MODULE_MAP[] = {
     { S5K3L2_SENSOR_INFO_MODULE_ID_MCNEX,		"mcnex_s5k3l2","mcnex_s5k3l2",NULL},
     { S5K3L2_SENSOR_INFO_MODULE_ID_MCNEX_2,		"mcnex_2_s5k3l2","mcnex_2_s5k3l2",NULL},
 };
-
 #define T4KB3_SENSOR_INFO_MODULE_ID_SUNNY		0x01
 #define T4KB3_SENSOR_INFO_MODULE_ID_TRULY		0x02
 #define T4KB3_SENSOR_INFO_MODULE_ID_A_KERR		0x03
@@ -355,6 +363,33 @@ MODULE_Map_Table IMX258_MODULE_MAP[] = {
     { IMX258_SENSOR_INFO_MODULE_ID_MCNEX,		"mcnex_imx258","mcnex_imx258",NULL},
     { IMX258_SENSOR_INFO_MODULE_ID_MCNEX_2,		"mcnex_2_imx258","mcnex_2_imx258",NULL},
 };
+
+#define OV13855_SENSOR_INFO_MODULE_ID_SUNNY		0x01
+#define OV13855_SENSOR_INFO_MODULE_ID_QTECH		0x06
+
+MODULE_Map_Table OV13855_MODULE_MAP[] = {
+    { OV13855_SENSOR_INFO_MODULE_ID_SUNNY	,	"sunny_ov13855","sunny_ov13855",NULL},
+    { OV13855_SENSOR_INFO_MODULE_ID_QTECH,	 "qtech_ov13855","qtech_ov13855",NULL},
+};
+
+#ifdef CONFIG_BOARD_GEVJON
+#define OV5695_SENSOR_INFO_MODULE_ID_SUNNY		0x01
+#define OV5695_SENSOR_INFO_MODULE_ID_TRULY		0x02
+#define OV5695_SENSOR_INFO_MODULE_ID_A_KERR		0x03
+#define OV5695_SENSOR_INFO_MODULE_ID_LITEARRAY	0x04
+#define OV5695_SENSOR_INFO_MODULE_ID_DARLING		0x05
+#define OV5695_SENSOR_INFO_MODULE_ID_QTECH		0x06
+
+MODULE_Map_Table OV5695_MODULE_MAP[] = {
+    { OV5695_SENSOR_INFO_MODULE_ID_SUNNY	,	"sunny_ov5695","sunny_ov5695",NULL},
+    { OV5695_SENSOR_INFO_MODULE_ID_TRULY,		"truly_ov5695","truly_ov5695",NULL},
+    { OV5695_SENSOR_INFO_MODULE_ID_A_KERR,	"a_kerr_ov5695","a_kerr_ov5695",NULL},
+    { OV5695_SENSOR_INFO_MODULE_ID_LITEARRAY,	"litearray_ov5695","litearray_ov5695",NULL},
+    { OV5695_SENSOR_INFO_MODULE_ID_DARLING,	"darling_ov5695","darling_tov5695",NULL},
+    { OV5695_SENSOR_INFO_MODULE_ID_QTECH,		"qtech_ov5695","qtech_ov5695",NULL},
+};
+#endif
+
 DEFINE_MSM_MUTEX(msm_eeprom_mutex);
 #ifdef CONFIG_COMPAT
 static struct v4l2_file_operations msm_eeprom_v4l2_subdev_fops;
@@ -410,6 +445,21 @@ static int msm_eeprom_config(struct msm_eeprom_ctrl_t *e_ctrl,
 	case CFG_EEPROM_GET_INFO:
 		CDBG("%s E CFG_EEPROM_GET_INFO\n", __func__);
 		cdata->is_supported = e_ctrl->is_supported;
+		/*
+		* Post compatible module info to vendor.by FENGYUAO_20150528.
+		*/
+		memcpy(cdata->chromtix_lib_name,
+			post_chromtix_lib_name,
+			sizeof(cdata->chromtix_lib_name));
+              pr_err("%s cdata->chromtix_lib_name %s\n", __func__,cdata->chromtix_lib_name);
+		memcpy(cdata->sensor_module_name,
+			post_sensor_module_name,
+			sizeof(cdata->sensor_module_name));
+		memcpy(cdata->default_chromtix_lib_name,
+			post_default_chromtix_lib_name,
+			sizeof(cdata->default_chromtix_lib_name));
+		/* end */
+		 
 		memcpy(cdata->cfg.eeprom_name,
 			e_ctrl->eboard_info->eeprom_name,
 			sizeof(cdata->cfg.eeprom_name));
@@ -694,6 +744,21 @@ static int msm_eeprom_config32(struct msm_eeprom_ctrl_t *e_ctrl,
 	case CFG_EEPROM_GET_INFO:
 		CDBG("%s E CFG_EEPROM_GET_INFO\n", __func__);
 		cdata->is_supported = e_ctrl->is_supported;
+		/*
+		* Post compatible module info to vendor.by FENGYUAO_20150528.
+		*/
+		memcpy(cdata->chromtix_lib_name,
+			post_chromtix_lib_name,
+			sizeof(cdata->chromtix_lib_name));
+		
+		memcpy(cdata->sensor_module_name,
+			post_sensor_module_name,
+			sizeof(cdata->sensor_module_name));
+		
+		memcpy(cdata->default_chromtix_lib_name,
+			post_default_chromtix_lib_name,
+			sizeof(cdata->default_chromtix_lib_name));
+		/* end */
 		memcpy(cdata->cfg.eeprom_name,
 			e_ctrl->eboard_info->eeprom_name,
 			sizeof(cdata->cfg.eeprom_name));
@@ -723,6 +788,7 @@ static long msm_eeprom_subdev_ioctl32(struct v4l2_subdev *sd,
 
 	CDBG("%s E\n", __func__);
 	CDBG("%s:%d a_ctrl %p argp %p\n", __func__, __LINE__, e_ctrl, argp);
+	CDBG("hwd %s: cmd=%d",__func__,cmd);
 	switch (cmd) {
 	case VIDIOC_MSM_SENSOR_GET_SUBDEV_ID:
 		return msm_eeprom_get_subdev_id(e_ctrl, argp);
@@ -800,10 +866,47 @@ static void parse_module_name(struct msm_eeprom_ctrl_t *e_ctrl,
 							MODULE_Map_Table *map,uint16_t len,uint16_t  sensor_module_id)
 {
 	int index = lookupIndexByid(map,len,sensor_module_id);
+	int string_length = 0;
 	if(index != -1){
 		e_ctrl->sensor_module_name = map[index].sensor_module_name;
+		/*
+		* Post compatible module info to vendor.by FENGYUAO_20150528.
+		*/
+		if(map && (map[index].sensor_module_name)){
+			string_length = strlen(map[index].sensor_module_name);
+			strncpy(post_sensor_module_name, map[index].sensor_module_name, string_length);
+			string_length = 0;
+			pr_err("ZTE_CAMERA:%s:%d: sensor_module_name = %s\n",
+				__func__,__LINE__, post_sensor_module_name);
+		}
+		/* end */
+		
 		e_ctrl->chromtix_lib_name = map[index].chromtix_lib_name;
+		/*
+		* Post compatible module info to vendor.by FENGYUAO_20150528.
+		*/
+		if(map && (map[index].chromtix_lib_name)){
+			string_length = strlen(map[index].chromtix_lib_name);
+			strncpy(post_chromtix_lib_name, map[index].chromtix_lib_name, string_length);
+			string_length = 0;
+			pr_err("ZTE_CAMERA:%s:%d: chromtix_lib_name = %s\n",
+				__func__,__LINE__, post_chromtix_lib_name);
+		}
+		/* end */
+
 		e_ctrl->default_chromtix_lib_name = map[index].default_chromtix_lib_name;
+		/*
+		* Post compatible module info to vendor.by FENGYUAO_20150528.
+		*/
+		if(map && (map[index].default_chromtix_lib_name)){		
+			string_length = strlen(map[index].default_chromtix_lib_name);
+			strncpy(post_default_chromtix_lib_name, map[index].default_chromtix_lib_name, string_length);
+			pr_err("ZTE_CAMERA:%s:%d: default_chromtix_lib_name = %s\n",
+				__func__,__LINE__, post_default_chromtix_lib_name);
+		}
+		/* end */
+		//e_ctrl->chromtix_lib_name = map[index].chromtix_lib_name;
+		//e_ctrl->default_chromtix_lib_name = map[index].default_chromtix_lib_name;
 		pr_err("ZTE_CAMERA:%s:%d:sensor_module_name = %s\n",
 			__func__,__LINE__,e_ctrl->sensor_module_name);
 	}
@@ -2082,6 +2185,153 @@ static int imx258_read_eeprom_memory(struct msm_eeprom_ctrl_t *e_ctrl,
 	return rc;
 }
 
+int ov13855_slave_id = 0xa1;
+
+#define  OV13855_LSC_SIZE 360
+#define  OV13855_AWB_SIZE 0x13             //19
+#define  OV13855_AF_SIZE 4
+
+static int ov13855_read_eeprom_memory(struct msm_eeprom_ctrl_t *e_ctrl,
+			      struct msm_eeprom_memory_block_t *block)
+{
+	int rc = 0;
+	struct msm_eeprom_memory_map_t *emap = block->map;
+	uint8_t *memptr = block->mapdata;
+	uint16_t  sensor_module_id = 0;
+	int i,j;
+
+    CDBG("%s:E\n",__func__);
+    if (!e_ctrl) {
+       pr_err("%s e_ctrl is NULL", __func__);
+       return -EINVAL;
+    }
+
+	for ( j = 0; j < block->num_map; j++) {
+		e_ctrl->i2c_client.addr_type = emap[j].mem.addr_t;
+		e_ctrl->i2c_client.cci_client->sid = ov13855_slave_id >>1;
+		rc = e_ctrl->i2c_client.i2c_func_tbl->i2c_read_seq(
+					&(e_ctrl->i2c_client), emap[j].mem.addr,
+					memptr, emap[j].mem.valid_size);
+		if (rc < 0) {
+			pr_err("%s:%d: read failed\n", __func__,__LINE__);
+		return rc;
+		}
+            for( i = 0; i < emap[j].mem.valid_size; i++)
+		CDBG("%s: block = %d:  data[%d]= %d \n",__func__,j,i ,memptr[i]);
+		memptr += emap[j].mem.valid_size;
+	}
+	sensor_module_id = block->mapdata[1];
+	pr_err("%s:sensor_module_id=%d",__func__,sensor_module_id);
+	parse_module_name(e_ctrl,OV13855_MODULE_MAP,
+			sizeof(OV13855_MODULE_MAP)/sizeof(MODULE_Map_Table),sensor_module_id);
+       CDBG("%s:X\n",__func__);
+	return rc;
+}
+
+/* only support qtech && kerr for devjon*/
+#ifdef CONFIG_BOARD_GEVJON
+int ov5695_slave_id=0xa0;
+void ov5695_read_eeprom_init(struct msm_eeprom_ctrl_t *e_ctrl)
+{
+#if 0
+	uint16_t temp;
+	
+			e_ctrl->i2c_client.i2c_func_tbl->i2c_read(&(e_ctrl->i2c_client),0x3d84,&temp,
+			MSM_CAMERA_I2C_BYTE_DATA);
+	CDBG("HWD %s:0x3d84 temp=0x%X \n",__func__,temp);
+	
+	
+	e_ctrl->i2c_client.i2c_func_tbl->i2c_write(&(e_ctrl->i2c_client),0x3d84,0xc0,
+		MSM_CAMERA_I2C_BYTE_DATA);		
+	e_ctrl->i2c_client.i2c_func_tbl->i2c_read(&(e_ctrl->i2c_client),0x3d84,&temp,
+			MSM_CAMERA_I2C_BYTE_DATA);
+	CDBG("HWD 2 %s:0x3d84 temp=0x%X \n",__func__,temp);
+
+	
+
+	
+	e_ctrl->i2c_client.i2c_func_tbl->i2c_write(&(e_ctrl->i2c_client),0x3d88,0x70,
+		MSM_CAMERA_I2C_BYTE_DATA);
+	e_ctrl->i2c_client.i2c_func_tbl->i2c_write(&(e_ctrl->i2c_client),0x3d89,0x0c,
+		MSM_CAMERA_I2C_BYTE_DATA);
+	e_ctrl->i2c_client.i2c_func_tbl->i2c_write(&(e_ctrl->i2c_client),0x3d8a,0x70,
+		MSM_CAMERA_I2C_BYTE_DATA);
+	e_ctrl->i2c_client.i2c_func_tbl->i2c_write(&(e_ctrl->i2c_client),0x3d8b,0x1b,
+		MSM_CAMERA_I2C_BYTE_DATA);
+	e_ctrl->i2c_client.i2c_func_tbl->i2c_write(&(e_ctrl->i2c_client),0x3d81,0x01,
+		MSM_CAMERA_I2C_BYTE_DATA);	
+	udelay(5);
+
+	#endif
+}
+
+void ov5695_read_eeprom_end(struct msm_eeprom_ctrl_t *e_ctrl)
+{
+	
+}
+
+int32_t ov5695_check_module_info_group(struct msm_eeprom_ctrl_t *e_ctrl)
+{
+	uint16_t temp;
+	   
+	e_ctrl->i2c_client.i2c_func_tbl->i2c_read(&(e_ctrl->i2c_client),0x700C,&temp,
+			MSM_CAMERA_I2C_BYTE_DATA);
+	CDBG("HWD %s:temp=0x%X",__func__,temp);
+	if((temp&0xC0) == 0x40)
+	{
+		return Group_One;
+	}else if((temp&0x30) == 0x10)
+	{
+		return Group_Two;
+	}else if((temp&0x0c) == 0x04)
+		{
+			return Group_Three;
+		}
+	return Invlid_Group;
+}
+
+static int ov5695_read_eeprom_memory(struct msm_eeprom_ctrl_t *e_ctrl,
+			      struct msm_eeprom_memory_block_t *block)
+{
+
+	int rc = 0;	
+	struct msm_eeprom_memory_map_t *emap = block->map;
+	struct msm_eeprom_board_info *eb_info;
+	uint8_t *memptr = block->mapdata;	
+	uint16_t  sensor_module_id = 0;	
+	int i,j;
+	if (!e_ctrl) {
+		pr_err("%s e_ctrl is NULL", __func__);
+		return -EINVAL;
+	}
+	pr_err("%s begin", __func__);
+	eb_info = e_ctrl->eboard_info;
+	e_ctrl->i2c_client.addr_type =MSM_CAMERA_I2C_BYTE_ADDR;
+		e_ctrl->i2c_client.i2c_func_tbl->i2c_read(&(e_ctrl->i2c_client),0,&sensor_module_id,
+			MSM_CAMERA_I2C_BYTE_DATA);
+	pr_err("%s:sensor_module_id=%d\n",__func__,sensor_module_id);
+				parse_module_name(e_ctrl,OV5695_MODULE_MAP,
+			sizeof(OV5695_MODULE_MAP)/sizeof(MODULE_Map_Table),sensor_module_id);	
+	for ( j = 0; j < block->num_map; j++) {
+		e_ctrl->i2c_client.cci_client->sid = emap[j].mem.addr >> 1;
+		rc = e_ctrl->i2c_client.i2c_func_tbl->i2c_read_seq(
+					&(e_ctrl->i2c_client), 0,
+					memptr, emap[j].mem.valid_size);
+		if (rc < 0) {
+			pr_err("%s:%d: read failed\n", __func__,__LINE__);
+		return rc;
+		}
+        for( i = 0; i < emap[j].mem.valid_size; i++) 
+			CDBG("%s: block = %d:  data[%d]= %d \n",__func__,j,i ,memptr[i]);
+			
+		memptr += emap[j].mem.valid_size;
+            
+	}
+	pr_err("%s end", __func__);
+	return rc;
+}
+#endif
+	
 static int zte_eeprom_generate_map(struct device_node *of,
 				       struct msm_eeprom_memory_block_t *data)
 {
@@ -2154,7 +2404,14 @@ static const struct of_device_id zte_eeprom_dt_match[] = {
 #ifdef CONFIG_BOARD_JASMINE
 	{ .compatible = "zte,eeprom-s5k5e8", .data = (void *)s5k5e8_read_eeprom_memory },
 #endif
-	{ .compatible = "zte,eeprom-imx258", .data = (void *)imx258_read_eeprom_memory },
+/*
+* add ov5695 driver
+*/
+#ifdef CONFIG_BOARD_GEVJON
+	{ .compatible = "zte,eeprom-ov5695", .data = (void *)ov5695_read_eeprom_memory },
+#endif
+	{ .compatible = "zte,eeprom-imx258",   .data = (void *)imx258_read_eeprom_memory },
+	{ .compatible = "zte,eeprom-ov13855", .data = (void *)ov13855_read_eeprom_memory },
 	{ }
 };
 

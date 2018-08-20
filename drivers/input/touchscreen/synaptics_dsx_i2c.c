@@ -109,8 +109,8 @@ SYN_JUNDA_FW_NAME,
 SYN_JIAGUAN_FW_NAME,
 SYN_MUDONG_FW_NAME,
 SYN_EACHOPTO_FW_NAME,
-SYN_LCE_FW_NAME
-
+SYN_LCE_FW_NAME,
+SYN_DIJING_FW_NAME
 };
 static int touch_moudle;
 struct synaptics_rmi4_data *bootloader_rmi4_data;
@@ -130,8 +130,18 @@ struct synaptics_rmi4_data *bootloader_rmi4_data;
 struct i2c_client *ts_client;
 struct synaptics_rmi4_data *syn_ts;
 static struct regulator *vdd, *vbus;
+static struct workqueue_struct	*syna_rmi4_resume_wq;
+static struct work_struct	syna_rmi4_resume_work;
 
-
+#ifdef CONFIG_BOARD_URD
+#define SYNA_TRULY_FW_NAME "Truly_S7020_6P_1920_1080_36323130_P895T20_PR2082467.img"
+#define LCD_TRULY "TRULY"
+#define LCD_LEAD "LEAD"
+#define LCD_DIJING "DIJING"
+static int gpio_status_1 = 255;
+static int gpio_status_2 = 255;
+char *lcd_module_id = NULL;
+#endif
 static int synaptics_rmi4_i2c_read(struct synaptics_rmi4_data *rmi4_data,
 		unsigned short addr, unsigned char *data,
 		unsigned short length);
@@ -165,7 +175,7 @@ static int fb_notifier_callback(struct notifier_block *self,
 
 int synaptics_rmi4_suspend_pm(void);
 
-int synaptics_rmi4_resume_pm(void);
+void synaptics_rmi4_resume_pm(struct work_struct *work);
 
 static ssize_t synaptics_rmi4_f01_reset_store(struct device *dev,
 		struct device_attribute *attr, const char *buf, size_t count);
@@ -2447,6 +2457,12 @@ static int syna_parse_dt(struct device *dev, struct synaptics_dsx_platform_data 
 	pdata->reset_delay_ms	= 100;
 	pdata->reset_gpio		= of_get_named_gpio(pdata->client->dev.of_node,
 		"synaptics,reset-gpio", 0);
+#ifdef CONFIG_BOARD_URD
+	pdata->lcd_gpio_1		= of_get_named_gpio(pdata->client->dev.of_node,
+		"synaptics,lcd-gpio-1", 0);
+	pdata->lcd_gpio_2		= of_get_named_gpio(pdata->client->dev.of_node,
+		"synaptics,lcd-gpio-2", 0);
+#endif
 	pdata->vdd				= VREG_VDD;
 	pdata->vbus				= VREG_VBUS;
 	pdata->irq_flags		= IRQF_TRIGGER_LOW;	
@@ -2541,8 +2557,6 @@ static int synaptics_rmi4_check_status(struct synaptics_rmi4_data *rmi4_data,
 	return 0;
 }
 
-
-
 static void synaptics_get_configid(
 	struct synaptics_rmi4_data *ts,
 	char *p_chip_type,
@@ -2560,189 +2574,303 @@ static void synaptics_get_configid(
 
 	retval = synaptics_rmi4_check_status(ts,&was_in_bl_mode);
 	if (retval < 0) {
-		/*dev_err(&fwu->rmi4_data->i2c_client->dev,
-						"%s: Failed to check status\n",
-						__func__);*/
-		printk("pzh:Failed to check status\n");
+		printk("%s:Failed to check status\n", __func__);
 	}
-	if (was_in_bl_mode&&ts->flash_prog_mode==true) {
-		printk("pzh: now in bootloader mode\n");
-		
-		retval = synaptics_rmi4_i2c_read(ts,bootloader_rmi4_data->f01_query_base_addr+3,
-			&chip_type,sizeof(chip_type));
-		
-		if (retval < 0){
-			printk("pzh:synaptics_rmi4_reg_read_chip_type error\n");
-			return;
-		}
-		ts->config_id.chip_type=chip_type;
-		printk("pzh:ts->config_id.chip_type=%d",ts->config_id.chip_type);
-		retval = synaptics_rmi4_i2c_read(ts,bootloader_rmi4_data->f01_query_base_addr+2,
-			&sensor_id,sizeof(sensor_id));
-		if (retval < 0){
-			printk("pzh:synaptics_rmi4_reg_read_sensor_id error\n");
-			return;
-		}
-		ts->config_id.sensor=sensor_id;
-		printk("\npzh:ts->config_id.sensor=%d",ts->config_id.sensor);
-		
-		pr_info("chip_type=0x%x, sensor=0x%x\n", 		
-		ts->config_id.chip_type,
-		ts->config_id.sensor);
 
-		
+	if (was_in_bl_mode && ts->flash_prog_mode == true) {
+		printk("%s: now in bootloader mode\n", __func__);
+		retval = synaptics_rmi4_i2c_read(ts,
+			bootloader_rmi4_data->f01_query_base_addr + 3,
+			&chip_type, sizeof(chip_type));
+		if (retval < 0) {
+			printk("%s:synaptics_rmi4_reg_read_chip_type error\n", __func__);
+			return;
+		}
+		ts->config_id.chip_type = chip_type;
+		printk("%s:ts->config_id.chip_type=%d", __func__, ts->config_id.chip_type);
+
+		retval = synaptics_rmi4_i2c_read(ts,
+			bootloader_rmi4_data->f01_query_base_addr + 2,
+			&sensor_id, sizeof(sensor_id));
+		if (retval < 0) {
+			printk("%s:synaptics_rmi4_reg_read_sensor_id error\n", __func__);
+			return;
+		}
+		ts->config_id.sensor = sensor_id;
+		printk("%s:ts->config_id.sensor=%d", __func__, ts->config_id.sensor);
+
+		pr_info("chip_type=0x%x, sensor=0x%x\n",
+			ts->config_id.chip_type,
+			ts->config_id.sensor);
+
 		if ( !p_chip_type || !p_sensor )
-				return;
-			
-			switch (ts->config_id.chip_type){
-			case '$':
-				ts->config_id.chip_type=54;
-				sprintf(p_chip_type,"S7020(0x%x)", ts->config_id.chip_type);
-				break;	
-			default:
-				sprintf(p_chip_type,"unknown(0x%x)", ts->config_id.chip_type);
-				break;
-			}
-		
-			switch(ts->config_id.sensor){
-			case '-':
-				ts->config_id.sensor=69;
-				sprintf(p_sensor, "JUNDA(0x%x)",ts->config_id.sensor);
-				touch_moudle=JUNDA;
-				break;
-			default:
-				sprintf(p_sensor, "unknown(0x%x)",ts->config_id.sensor);
-				touch_moudle=UNKNOW;
-				break;
-			}
+			return;
+
+		switch (ts->config_id.chip_type){
+		case 31:
+			ts->config_id.chip_type = 49;
+			sprintf(p_chip_type,"S2200(0x%x)", ts->config_id.chip_type);
+			break;
+		case 32:
+			ts->config_id.chip_type = 50;
+			sprintf(p_chip_type,"S2202(0x%x)", ts->config_id.chip_type);
+			break;
+		case 33:
+			ts->config_id.chip_type = 51;
+			sprintf(p_chip_type,"S3200(0x%x)", ts->config_id.chip_type);
+			break;
+		case 34:
+			ts->config_id.chip_type = 52;
+			sprintf(p_chip_type,"S3202(0x%x)", ts->config_id.chip_type);
+			break;
+		case 35:
+			ts->config_id.chip_type = 53;
+			sprintf(p_chip_type,"S3203(0x%x)", ts->config_id.chip_type);
+			break;
+		case 36:
+			ts->config_id.chip_type = 54;
+			sprintf(p_chip_type,"S7020(0x%x)", ts->config_id.chip_type);
+			break;
+		case 37:
+			ts->config_id.chip_type = 55;
+			sprintf(p_chip_type,"S7300(0x%x)", ts->config_id.chip_type);
+			break;
+		case 44:
+			ts->config_id.chip_type = 68;
+			sprintf(p_chip_type,"S2331(0x%x)", ts->config_id.chip_type);
+			break;
+		case 51:
+			ts->config_id.chip_type = 81;
+			sprintf(p_chip_type,"S7040(0x%x)", ts->config_id.chip_type);
+			break;
+		case 52:
+			ts->config_id.chip_type=82;
+			sprintf(p_chip_type,"S7060(0x%x)", ts->config_id.chip_type);
+			break;
+		default:
+			sprintf(p_chip_type,"unknown(0x%x)", ts->config_id.chip_type);
+			break;
+		}
+
+		switch(ts->config_id.sensor){
+		case 31:
+			ts->config_id.sensor = 49;
+			sprintf(p_sensor, "TPK(0x%x)",ts->config_id.sensor );
+			touch_moudle=TPK;
+			break;
+		case 32:
+			ts->config_id.sensor = 50;
+			sprintf(p_sensor, "Truly(0x%x)",ts->config_id.sensor);
+			touch_moudle=TRULY;
+			break;
+		case 33:
+			ts->config_id.sensor = 51;
+			sprintf(p_sensor, "Success(0x%x)",ts->config_id.sensor);
+			touch_moudle=SUCCESS;
+			break;
+		case 34:
+			ts->config_id.sensor = 52;
+			sprintf(p_sensor, "Ofilm(0x%x)",ts->config_id.sensor);
+			touch_moudle=OFILM;
+			break;
+		case 35:
+			ts->config_id.sensor = 53;
+			sprintf(p_sensor, "Lead(0x%x)",ts->config_id.sensor);
+			touch_moudle=LEAD;
+			break;
+		case 36:
+			ts->config_id.sensor = 54;
+			sprintf(p_sensor, "Wintek(0x%x)",ts->config_id.sensor);
+			touch_moudle=WINTEK;
+			break;
+		case 37:
+			ts->config_id.sensor = 55;
+			sprintf(p_sensor, "Laibao(0x%x)",ts->config_id.sensor);
+			touch_moudle=LAIBAO;
+			break;
+		case 38:
+			ts->config_id.sensor = 56;
+			sprintf(p_sensor, "CMI(0x%x)",ts->config_id.sensor);
+			touch_moudle=CMI;
+			break;
+		case 39:
+			ts->config_id.sensor = 57;
+			sprintf(p_sensor, "ECW(0x%x)",ts->config_id.sensor);
+			touch_moudle=ECW;
+			break;
+		case 41:
+			ts->config_id.sensor = 65;
+			sprintf(p_sensor, "Goworld(0x%x)",ts->config_id.sensor);
+			touch_moudle=GOWORLD;
+			break;
+		case 42:
+			ts->config_id.sensor = 66;
+			sprintf(p_sensor, "Baoming(0x%x)",ts->config_id.sensor);
+			touch_moudle=BAOMING;
+		case 43:
+			ts->config_id.sensor = 67;
+			sprintf(p_sensor, "Eachopto(0x%x)",ts->config_id.sensor);
+			touch_moudle=EACHOPTO;
+			break;
+		case 45:
+			ts->config_id.sensor = 69;
+			sprintf(p_sensor, "JUNDA(0x%x)",ts->config_id.sensor);
+			touch_moudle=JUNDA;
+			break;
+		case 49:
+			ts->config_id.sensor = 73;
+			sprintf(p_sensor, "DIJING(0x%x)", ts->config_id.sensor);
+			touch_moudle = DIJING;
+			break;
+		case 50:
+			ts->config_id.sensor = 80;
+			sprintf(p_sensor, "LCE(0x%x)",ts->config_id.sensor);
+			touch_moudle=LCE;
+			break;
+		default:
+			sprintf(p_sensor, "unknown(0x%x)",ts->config_id.sensor);
+			touch_moudle=UNKNOW;
+			break;
+		}
 	}else{
-	       ret = synaptics_rmi4_i2c_read(ts, ts->f34_ctrl_base_addr, (char *)&ts->config_id, 4);
-		printk("pzh:synaptics_get_configid---ts->f34_ctrl_base_addr==0x%x",ts->f34_ctrl_base_addr);
+		ret = synaptics_rmi4_i2c_read(ts, ts->f34_ctrl_base_addr, (char *)&ts->config_id, 4);
+		printk("%s:ts->f34_ctrl_base_addr==0x%x", __func__, ts->f34_ctrl_base_addr);
 		if (ret < 0)
-			pr_err("%s: failed to get ts f34.ctrl_base\n",__func__);	
+			pr_err("%s: failed to get ts f34.ctrl_base\n",__func__);
 
-		
-		pr_info("chip_type=0x%x, sensor=0x%x, fw_ver=0x%x\n", 		
-		ts->config_id.chip_type,
-		ts->config_id.sensor,
-		ts->config_id.fw_ver);
+		pr_info("chip_type=0x%x, sensor=0x%x, fw_ver=0x%x\n",
+			ts->config_id.chip_type,
+			ts->config_id.sensor,
+			ts->config_id.fw_ver);
 
+		if ( !p_chip_type || !p_sensor || !p_fw_ver )
+			return;
 
-	if ( !p_chip_type || !p_sensor || !p_fw_ver )
-		return;
-	
-	switch (ts->config_id.chip_type){
-	case '1':
-		sprintf(p_chip_type,"S2200(0x%x)", ts->config_id.chip_type);
-		break;
-	case '2':
-		sprintf(p_chip_type,"S2202(0x%x)", ts->config_id.chip_type);
-		break;
-	case '3':
-		sprintf(p_chip_type,"S3200(0x%x)", ts->config_id.chip_type);
-		break;
-	case '4':
-		sprintf(p_chip_type,"S3202(0x%x)", ts->config_id.chip_type);
-		break;
-	case '5':
-		sprintf(p_chip_type,"S3203(0x%x)", ts->config_id.chip_type);
-		break;
-	case '6':
-		sprintf(p_chip_type,"S7020(0x%x)", ts->config_id.chip_type);
-		break;
-	case '7':
-		sprintf(p_chip_type,"S7300(0x%x)", ts->config_id.chip_type);
-		break;
-	case 'D':
-		sprintf(p_chip_type,"S2331(0x%x)", ts->config_id.chip_type);
-		break;		
-	case 'Q':
-		sprintf(p_chip_type,"S7040(0x%x)", ts->config_id.chip_type);
-		break;	
-	default:
-		sprintf(p_chip_type,"unknown(0x%x)", ts->config_id.chip_type);
-		break;
+		switch (ts->config_id.chip_type){
+		case '1':
+			sprintf(p_chip_type,"S2200(0x%x)", ts->config_id.chip_type);
+			break;
+		case '2':
+			sprintf(p_chip_type,"S2202(0x%x)", ts->config_id.chip_type);
+			break;
+		case '3':
+			sprintf(p_chip_type,"S3200(0x%x)", ts->config_id.chip_type);
+			break;
+		case '4':
+			sprintf(p_chip_type,"S3202(0x%x)", ts->config_id.chip_type);
+			break;
+		case '5':
+			sprintf(p_chip_type,"S3203(0x%x)", ts->config_id.chip_type);
+			break;
+		case '6':
+			sprintf(p_chip_type,"S7020(0x%x)", ts->config_id.chip_type);
+			break;
+		case '7':
+			sprintf(p_chip_type,"S7300(0x%x)", ts->config_id.chip_type);
+			break;
+		case 'D':
+			sprintf(p_chip_type,"S2331(0x%x)", ts->config_id.chip_type);
+			break;
+		case 'Q':
+			sprintf(p_chip_type,"S7040(0x%x)", ts->config_id.chip_type);
+			break;
+		case 'R':
+			sprintf(p_chip_type,"S7060(0x%x)", ts->config_id.chip_type);
+			break;
+		default:
+			sprintf(p_chip_type,"unknown(0x%x)", ts->config_id.chip_type);
+			break;
+		}
+
+		switch(ts->config_id.sensor){
+		case '1':
+			sprintf(p_sensor, "TPK(0x%x)",ts->config_id.sensor );
+			touch_moudle=TPK;
+			break;
+		case '2':
+			sprintf(p_sensor, "Truly(0x%x)",ts->config_id.sensor);
+			touch_moudle=TRULY;
+			break;
+		case '3':
+			sprintf(p_sensor, "Success(0x%x)",ts->config_id.sensor);
+			touch_moudle=SUCCESS;
+			break;
+		case '4':
+			sprintf(p_sensor, "Ofilm(0x%x)",ts->config_id.sensor);
+			touch_moudle=OFILM;
+			break;
+		case '5':
+			sprintf(p_sensor, "Lead(0x%x)",ts->config_id.sensor);
+			touch_moudle=LEAD;
+			break;
+		case '6':
+			sprintf(p_sensor, "Wintek(0x%x)",ts->config_id.sensor);
+			touch_moudle=WINTEK;
+			break;
+		case '7':
+			sprintf(p_sensor, "Laibao(0x%x)",ts->config_id.sensor);
+			touch_moudle=LAIBAO;
+			break;
+		case '8':
+			sprintf(p_sensor, "CMI(0x%x)",ts->config_id.sensor);
+			touch_moudle=CMI;
+			break;
+		case '9':
+			sprintf(p_sensor, "ECW(0x%x)",ts->config_id.sensor);
+			touch_moudle=ECW;
+			break;
+		case 'A':
+			sprintf(p_sensor, "Goworld(0x%x)",ts->config_id.sensor);
+			touch_moudle=GOWORLD;
+			break;
+		case 'B':
+			sprintf(p_sensor, "Baoming(0x%x)",ts->config_id.sensor);
+			touch_moudle=BAOMING;
+		case 'C':
+			sprintf(p_sensor, "Eachopto(0x%x)",ts->config_id.sensor);
+			touch_moudle=EACHOPTO;
+			break;
+		case 'E':
+			sprintf(p_sensor, "JUNDA(0x%x)",ts->config_id.sensor);
+			touch_moudle=JUNDA;
+			break;
+		case 'I':
+			sprintf(p_sensor, "DIJING(0x%x)", ts->config_id.sensor);
+			touch_moudle = DIJING;
+			break;
+		case 'P':
+			sprintf(p_sensor, "LCE(0x%x)",ts->config_id.sensor);
+			touch_moudle=LCE;
+			break;
+		default:
+			sprintf(p_sensor, "unknown(0x%x)",ts->config_id.sensor);
+			touch_moudle=UNKNOW;
+			break;
+		}
+
+		*p_fw_ver = ts->config_id.fw_ver;
 	}
 
-	switch(ts->config_id.sensor){
-	case '1':
-		sprintf(p_sensor, "TPK(0x%x)",ts->config_id.sensor );
-		touch_moudle=TPK;
-		break;
-	case '2':
-		sprintf(p_sensor, "Truly(0x%x)",ts->config_id.sensor);
-		touch_moudle=TRULY;
-		break;
-	case '3':
-		sprintf(p_sensor, "Success(0x%x)",ts->config_id.sensor);
-		touch_moudle=SUCCESS;
-		break;
-	case '4':
-		sprintf(p_sensor, "Ofilm(0x%x)",ts->config_id.sensor);
-		touch_moudle=OFILM;
-		break;
-	case '5':
-		sprintf(p_sensor, "Lead(0x%x)",ts->config_id.sensor);
-		touch_moudle=LEAD;
-		break;
-	case '6':
-		sprintf(p_sensor, "Wintek(0x%x)",ts->config_id.sensor);
-		touch_moudle=WINTEK;
-		break;
-	case '7':
-		sprintf(p_sensor, "Laibao(0x%x)",ts->config_id.sensor);
-		touch_moudle=LAIBAO;
-		break;
-	case '8':
-		sprintf(p_sensor, "CMI(0x%x)",ts->config_id.sensor);
-		touch_moudle=CMI;
-		break;
-	case '9':
-		sprintf(p_sensor, "ECW(0x%x)",ts->config_id.sensor);
-		touch_moudle=ECW;
-		break;
-	case 'A':
-		sprintf(p_sensor, "Goworld(0x%x)",ts->config_id.sensor);
-		touch_moudle=GOWORLD;
-		break;
-	case 'B':
-		sprintf(p_sensor, "Baoming(0x%x)",ts->config_id.sensor);
-		touch_moudle=BAOMING;
-	case 'C':
-		sprintf(p_sensor, "Eachopto(0x%x)",ts->config_id.sensor);
-		touch_moudle=EACHOPTO;		
-		break;				
-	case 'E':
-		sprintf(p_sensor, "JUNDA(0x%x)",ts->config_id.sensor);
-		touch_moudle=JUNDA;
-		break;
-	case 'P':
-		sprintf(p_sensor, "LCE(0x%x)",ts->config_id.sensor);
-		touch_moudle=LCE;
-		break;
-	default:
-		sprintf(p_sensor, "unknown(0x%x)",ts->config_id.sensor);
-		touch_moudle=UNKNOW;
-		break;
+	if (touch_moudle < SYN_MOUDLE_NUM_MAX) {
+#ifdef CONFIG_BOARD_URD
+		if (lcd_module_id != NULL) {
+			if (!strcmp(lcd_module_id, LCD_TRULY))
+				syna_file_name = SYNA_TRULY_FW_NAME;
+			else
+				syna_file_name = syn_fwfile_table[touch_moudle];
+		} else
+			syna_file_name = NULL;
+#else
+		syna_file_name = syn_fwfile_table[touch_moudle];
+#endif
+		printk("%s:syna_file_name = %s\n", __func__, syna_file_name);
 	}
 
-	*p_fw_ver = ts->config_id.fw_ver;
-	}
-
-		
-
-	
-	
-//#if defined(CONFIG_TOUCHSCREEN_SYNAPTICS_DSX_FW_UPDATE)
-	if(touch_moudle<SYN_MOUDLE_NUM_MAX){
-	syna_file_name= syn_fwfile_table[touch_moudle];
-	printk("syna_file_name:%s\n",syna_file_name);
-	}
-//#endif
 	pr_info("chip: %s, sensor %s, fw 0x%x \n", p_chip_type, p_sensor, *p_fw_ver);
 
 	return;
 }
+
 #if 0
 static int
 proc_log_read_val(char *page, char **start, off_t off, int count, int *eof,
@@ -2799,36 +2927,54 @@ proc_read_val(struct file *file, char __user *page, size_t size, loff_t *ppos)
 {
 	int len = 0;
 	char chiptype[16], sensor[16];
-	int fw_ver=0;
-	int ready_fw_ver=-1;
+	int fw_ver = 0;
+	int ready_fw_ver = -1;
+	int fw_flag = 0;
+	int fw_version = 0;
+
 	if ( syn_ts == NULL)
-		return -1;
+		return -EINVAL;
     if (*ppos)      // ADB call again
     {
         return 0;
-    }	
+    }
 	len += sprintf(page + len, "Manufacturer : %s\n", "Synaptics");
 
 	synaptics_get_configid( syn_ts, (char *)&chiptype,(char *)&sensor, &fw_ver);
+	fw_version = ((fw_ver & 0x000000ff) << 8) | ((fw_ver & 0x0000ff00) >> 8);
 #if defined(CONFIG_TOUCHSCREEN_SYNAPTICS_DSX_FW_UPDATE)
-	if(touch_moudle<SYN_MOUDLE_NUM_MAX)
-	ready_fw_ver=syna_get_fw_ver(syn_ts->i2c_client,syn_fwfile_table[touch_moudle]);
+	if (touch_moudle < SYN_MOUDLE_NUM_MAX)
+		ready_fw_ver = syna_get_fw_ver(syn_ts->i2c_client, syna_file_name);
 #endif	
 	len += sprintf(page + len, "chip type : %s \n", chiptype );
 	len += sprintf(page + len, "sensor partner : %s \n", sensor );
-	len += sprintf(page + len, "FW Revision : %c%c \n", fw_ver&0x000000ff, (fw_ver&0x0000ff00)>>8);
+	len += sprintf(page + len, "FW Revision : %c%c \n", (fw_version & 0x0000ff00) >> 8, fw_version & 0x0000ff);
 #ifdef CONFIG_TOUCHSCREEN_SYNAPTICS_DSX_FW_UPDATE
-	len += sprintf(page + len, "update flag : 0x%x\n", syna_update_flag);
+	len += sprintf(page + len, "update flag : 0x%02x\n", syna_update_flag);
 #endif
 	//len = zte_fw_info_show(page, len);	
 	if(ready_fw_ver!=-1){
 		//len += sprintf(page + len, "need update : %s\n", (ready_fw_ver>fw_ver?"yes":"no"));
-		len += sprintf(page + len, "need update : %s\n", (ready_fw_ver>(((fw_ver&0x000000ff)<<8)|((fw_ver&0x0000ff00)>>8))?"yes":"no"));
+		len += sprintf(page + len, "need update : %s\n", (ready_fw_ver>fw_version?"yes":"no"));
 		len += sprintf(page + len, "ready fw version : %c%c\n", (ready_fw_ver&0x0000ff00)>>8, ready_fw_ver&0x000000ff);
 	}else
 	{
-		len += sprintf(page + len, "no fw to update\n");
+		len += sprintf(page + len, "need update : %s\n", "no");
+		len += sprintf(page + len, "ready fw version : %s\n", "null");
 	}
+
+	if (ready_fw_ver == -1) {
+		fw_flag = 2;
+	} else if (ready_fw_ver == fw_version) {
+		fw_flag = 0;
+	} else if (ready_fw_ver > fw_version) {
+		fw_flag = 1;
+	} else if (ready_fw_ver < fw_version) {
+		fw_flag = 2;
+	}
+
+	len += sprintf(page + len, "FW flag : 0x%02x\n", fw_flag);
+
 	*ppos += len;
 
 	return len;
@@ -2841,20 +2987,20 @@ ssize_t proc_write_val(struct file *file, const char  __user *buffer,
 	unsigned long val,ret;
 	ret=copy_from_user(&val, buffer, 1);
 
-
 #if defined(CONFIG_TOUCHSCREEN_SYNAPTICS_DSX_FW_UPDATE)
 	syna_update_flag = 0;
 	if(touch_moudle>=SYN_MOUDLE_NUM_MAX)
 	{
 		printk("touchscreen moudle unknow!");
-		syna_update_flag = 1;
+		syna_update_flag = 3;
 		return -EINVAL;
 	}
+	syna_update_flag = 1;
 	//disable_irq(syn_ts->i2c_client->irq);
 	if(fwu_start_reflash())
 	{
 		enable_irq(syn_ts->i2c_client->irq);
-		syna_update_flag = 1;
+		syna_update_flag = 3;
 		pr_info("syna fw update fail! \n" );
 		return -EINVAL;
 	}
@@ -2887,14 +3033,15 @@ ts_update_read_val(struct file *file, char __user *page, size_t size, loff_t *pp
 		if(touch_moudle>=SYN_MOUDLE_NUM_MAX)
 		{
 			printk("touchscreen moudle unknow!");
-			syna_update_flag = 1;
+			syna_update_flag = 3;
 			return 1;
 		}
+		syna_update_flag = 1;
 		//disable_irq(syn_ts->i2c_client->irq);
 		if(fwu_start_reflash())
 		{
 			//enable_irq(syn_ts->i2c_client->irq);
-			syna_update_flag = 1;
+			syna_update_flag = 3;
 			pr_info("syna fw update fail! \n" );
 			return 1;
 		}
@@ -3065,7 +3212,7 @@ static int  synaptics_rmi4_probe(struct i2c_client *client,
 	struct synaptics_dsx_platform_data *platform_data; 
 	char chiptype[16], sensor[16];
 	int fw_ver=0;
-	printk("hjy synaptics_rmi4_probe\n");
+	printk("%s:start\n", __func__);
 	if (!i2c_check_functionality(client->adapter,
 			I2C_FUNC_SMBUS_BYTE_DATA)) {
 		dev_err(&client->dev,
@@ -3162,7 +3309,9 @@ static int  synaptics_rmi4_probe(struct i2c_client *client,
 
 	init_waitqueue_head(&rmi4_data->wait);
 	mutex_init(&(rmi4_data->rmi4_io_ctrl_mutex));
-
+#if (defined(CONFIG_BOARD_URD) || defined(CONFIG_BOARD_GEVJON))
+	mutex_init(&(rmi4_data->rmi4_free_fingers_mutex));
+#endif
 
 		touchscreen_reset(0,platform_data->reset_gpio);
 		//touchscreen_power(0);
@@ -3231,6 +3380,44 @@ static int  synaptics_rmi4_probe(struct i2c_client *client,
 		goto err_create_singlethread;
 	}
 	INIT_WORK(&rmi4_data->work, synaptics_work_func);
+
+	syna_rmi4_resume_wq = create_singlethread_workqueue("syna_rmi4_resume_wq");
+	if (!syna_rmi4_resume_wq) {
+		pr_err("Could not create work queue syna_rmi4_resume_wq: no memory");
+		retval = -ESRCH;
+		goto err_create_singlethread;
+	}
+	INIT_WORK(&syna_rmi4_resume_work, synaptics_rmi4_resume_pm);
+
+#ifdef CONFIG_BOARD_URD
+	retval = gpio_request(platform_data->lcd_gpio_1, "lcd_gpio_1");
+	if (retval)
+		pr_err("gpio %d request is error, retval = %d\n", platform_data->lcd_gpio_1, retval);
+	else {
+		gpio_direction_input(platform_data->lcd_gpio_1);
+		gpio_status_1 = gpio_get_value(platform_data->lcd_gpio_1);
+	}
+
+	retval = gpio_request(platform_data->lcd_gpio_2, "lcd_gpio_2");
+	if (retval)
+		pr_err("gpio %d request is error, retval = %d\n", platform_data->lcd_gpio_2, retval);
+	else {
+		gpio_direction_input(platform_data->lcd_gpio_2);
+		gpio_status_2 = gpio_get_value(platform_data->lcd_gpio_2);
+	}
+
+	if (gpio_status_1 == 0 && gpio_status_2 == 0)
+		lcd_module_id = LCD_TRULY;
+	else if (gpio_status_1 == 1 && gpio_status_2 == 0)
+		lcd_module_id = LCD_LEAD;
+	else if (gpio_status_1 == 0 && gpio_status_2 == 1)
+		lcd_module_id = LCD_DIJING;
+	else
+	    lcd_module_id = "unknown";
+
+	printk("%s: gpio_lcd_module_id = %s, gpio_status_1 = %d, gpio_status_2 = %d\n",
+		__func__, lcd_module_id, gpio_status_1, gpio_status_2);
+#endif
 
 	syn_ts=rmi4_data;
 	synaptics_get_configid( syn_ts, (char *)&chiptype,(char *)&sensor, &fw_ver);
@@ -3373,6 +3560,7 @@ static int  synaptics_rmi4_probe(struct i2c_client *client,
 			goto err_sysfs;
 		}
 	}
+
 	#if defined(CONFIG_TOUCHSCREEN_SYNAPTICS_DSX_FW_UPDATE)
 	rmi4_fw_update_module_init();
 	syna_fwupdate_init(client);
@@ -3383,14 +3571,23 @@ static int  synaptics_rmi4_probe(struct i2c_client *client,
 	#if defined(CONFIG_TOUCHSCREEN_SYNAPTICS_DSX_RMI4_DEV)
 	rmidev_module_init();
 	#endif
-	
+
+	#ifdef ZTE_FASTMMI_MANUFACTURING_VERSION
+	syn_ts->fb_ready = true;
+	syn_ts->stay_awake = true;
+	printk("%s:fb_ready=%d, stay_awake=%d\n",
+		__func__,
+		syn_ts->fb_ready,
+		syn_ts->stay_awake);
+	#endif
+
 	rmi4_data->fb_notif.notifier_call = fb_notifier_callback;
 	retval = fb_register_client(&rmi4_data->fb_notif);
 	if (retval)
 		dev_err(&rmi4_data->i2c_client->dev,
 			"Unable to register fb_notifier: %d\n",
 			retval);
-	
+
 	dir = proc_mkdir("touchscreen", NULL);
 	  //refresh = create_proc_entry("ts_information", 0664, dir);
 	  refresh=proc_create("ts_information", 0664, dir, &proc_ops);
@@ -3418,6 +3615,7 @@ static int  synaptics_rmi4_probe(struct i2c_client *client,
 		  refresh->write_proc = NULL;
 	  }
 	#endif
+	printk("%s:end\n", __func__);
 	return retval;
 
 err_sysfs:
@@ -3469,7 +3667,7 @@ err_input_device:
 	kfree(rmi4_data);
 err_devm:
 	kfree(platform_data);
-	
+	printk("%s:end due to error\n", __func__);
 	return retval;
 }
 
@@ -3734,6 +3932,38 @@ static int synaptics_rmi4_resume(struct device *dev)
 	return 0;
 }
 #endif
+
+#if (defined(CONFIG_BOARD_URD) || defined(CONFIG_BOARD_GEVJON))
+static int synaptics_rmi4_free_fingers(struct synaptics_rmi4_data *rmi4_data)
+{
+       unsigned char ii;
+       mutex_lock(&(rmi4_data->rmi4_free_fingers_mutex));
+
+#ifdef TYPE_B_PROTOCOL
+       for (ii = 0; ii < rmi4_data->num_of_fingers; ii++) {
+               input_mt_slot(rmi4_data->input_dev, ii);
+               input_mt_report_slot_state(rmi4_data->input_dev,
+                               MT_TOOL_FINGER, 0);
+       }
+#endif
+       input_report_key(rmi4_data->input_dev,
+                       BTN_TOUCH, 0);
+       input_report_key(rmi4_data->input_dev,
+                       BTN_TOOL_FINGER, 0);
+
+#ifndef TYPE_B_PROTOCOL
+       input_mt_sync(rmi4_data->input_dev);
+#endif
+       input_sync(rmi4_data->input_dev);
+
+       mutex_unlock(&(rmi4_data->rmi4_free_fingers_mutex));
+
+       rmi4_data->fingers_on_2d = false;
+
+       return 0;
+}
+#endif
+
 static int fb_notifier_callback(struct notifier_block *self,
 				 unsigned long event, void *data)
 {
@@ -3745,15 +3975,14 @@ static int fb_notifier_callback(struct notifier_block *self,
 	if (evdata && evdata->data && event == FB_EVENT_BLANK &&
 			ts && ts->i2c_client) {
 		blank = evdata->data;
-		if (*blank == FB_BLANK_UNBLANK){
-			synaptics_rmi4_resume_pm();
-			printk("pzh:fb_notifier_callback---ts->fb_ready=%d\n",ts->fb_ready);
-		        ts->fb_ready = true;
-		}
-		else if ((*blank == FB_BLANK_POWERDOWN)||(*blank == FB_BLANK_NORMAL)){
+		if (*blank == FB_BLANK_UNBLANK) {
+			queue_work(syna_rmi4_resume_wq, &syna_rmi4_resume_work);
+			printk("%s: ts->fb_ready = %d\n", __func__, ts->fb_ready);
+			ts->fb_ready = true;
+		} else if ((*blank == FB_BLANK_POWERDOWN) ||( *blank == FB_BLANK_NORMAL)) {
 			synaptics_rmi4_suspend_pm();
-			printk("pzh:fb_notifier_callback---ts->fb_ready=%d\n",ts->fb_ready);
-		       ts->fb_ready = false;
+			printk("%s: ts->fb_ready = %d\n", __func__, ts->fb_ready);
+			ts->fb_ready = false;
 		}
 	}
 
@@ -3762,57 +3991,92 @@ static int fb_notifier_callback(struct notifier_block *self,
 
 int synaptics_rmi4_suspend_pm(void)
 {
+	printk("%s:start\n", __func__);
 
- printk("synaptics_rmi4_suspend_pm\n");
- if (!syn_ts->sensor_sleep) {
-	 syn_ts->touch_stopped = true;
-	 wake_up(&syn_ts->wait);
-	 synaptics_rmi4_irq_enable(syn_ts, false);
-	 synaptics_rmi4_sensor_sleep(syn_ts);
- }
+#ifdef ZTE_FASTMMI_MANUFACTURING_VERSION
+	if (syn_ts->stay_awake) {
+		printk("%s:can not suspend and return\n", __func__);
+		return 0;
+	}
+#endif
 
- //if (platform_data->regulator_en)
- //  regulator_disable(rmi4_data->regulator);
+	if (!syn_ts->sensor_sleep) {
+		syn_ts->touch_stopped = true;
+		wake_up(&syn_ts->wait);
+		synaptics_rmi4_irq_enable(syn_ts, false);
+		synaptics_rmi4_sensor_sleep(syn_ts);
+	}
 
- return 0;
+	//if (platform_data->regulator_en)
+	//  regulator_disable(rmi4_data->regulator);
+
+	printk("%s:end\n", __func__);
+
+	return 0;
 }
-int synaptics_rmi4_resume_pm(void)
+
+void synaptics_rmi4_resume_pm(struct work_struct *work)
 {
+#if (defined(CONFIG_BOARD_URD) || defined(CONFIG_BOARD_GEVJON))
+	int retval;
+	unsigned char command = 0x01;
+#endif
 
- printk("synaptics_rmi4_resume_pm\n");  
- if(syn_ts->sensor_sleep){
-    synaptics_rmi4_sensor_wake(syn_ts);
-    zte_synaptics_change_fw_config(syn_ts);//xym 
-    syn_ts->touch_stopped = false;
-    synaptics_rmi4_irq_enable(syn_ts, true);
- }
+	printk("%s:start\n", __func__);
+
+#if (defined(CONFIG_BOARD_URD) || defined(CONFIG_BOARD_GEVJON))
+	/*sw reset*/
+	retval = synaptics_rmi4_i2c_write(syn_ts,
+		syn_ts->f01_cmd_base_addr,
+		&command,
+		sizeof(command));
+	if (retval < 0) {
+		dev_err(&(syn_ts->input_dev->dev),
+			"%s: Failed to wake from sleep mode\n",
+			__func__);
+	}
+	msleep(200);//reset time of S7020 > 63ms,add to 200ms 20160727
+
+	if (syn_ts) {
+		synaptics_rmi4_free_fingers(syn_ts);
+	}
+#endif
+
+	if(syn_ts->sensor_sleep){
+		synaptics_rmi4_sensor_wake(syn_ts);
+		zte_synaptics_change_fw_config(syn_ts);//xym
+		syn_ts->touch_stopped = false;
+		synaptics_rmi4_irq_enable(syn_ts, true);
+	}
+
 #if 1
-	 timespec= current_kernel_time();
-	 rtc_time_to_tm(timespec.tv_sec, &time);
-	 touchscreen_logs[touchscreen_log_num].line=touchscreen_log_num+1;
-	 //strcpy(touchscreen_logs[touchscreen_log_num].space," ");
-	 touchscreen_logs[touchscreen_log_num].month=time.tm_mon;
-	 touchscreen_logs[touchscreen_log_num].day=time.tm_mday;
-	 touchscreen_logs[touchscreen_log_num].hour=time.tm_hour;
-	 touchscreen_logs[touchscreen_log_num].min=time.tm_min;
-	 touchscreen_logs[touchscreen_log_num].second=time.tm_sec;
-	 touchscreen_logs[touchscreen_log_num].nanosecond=timespec.tv_nsec;
-	 //strcpy(touchscreen_logs[touchscreen_log_num].date,"-");
-	 //strcpy(touchscreen_logs[touchscreen_log_num].space1," ");
-	 //strcpy(touchscreen_logs[touchscreen_log_num].time1,":");
-	 //strcpy(touchscreen_logs[touchscreen_log_num].time2,":");
-	 //strcpy(touchscreen_logs[touchscreen_log_num].space2," ");
-	 //strcpy(touchscreen_logs[touchscreen_log_num].fingers,"f:");
-	 touchscreen_logs[touchscreen_log_num].finger_id=0xf;
-	 touchscreen_logs[touchscreen_log_num].finger_status=0xf;		 
-	 touchscreen_logs[touchscreen_log_num].pointer_nums=0xf;
-	 touchscreen_log_num++;
-	 if (touchscreen_log_num>=touchscreen_log_max)
-		 touchscreen_log_num=0;
-	#endif
- printk("synaptics_rmi4_resume_pm end\n");  
+	timespec= current_kernel_time();
+	rtc_time_to_tm(timespec.tv_sec, &time);
+	touchscreen_logs[touchscreen_log_num].line=touchscreen_log_num+1;
+	//strcpy(touchscreen_logs[touchscreen_log_num].space," ");
+	touchscreen_logs[touchscreen_log_num].month=time.tm_mon;
+	touchscreen_logs[touchscreen_log_num].day=time.tm_mday;
+	touchscreen_logs[touchscreen_log_num].hour=time.tm_hour;
+	touchscreen_logs[touchscreen_log_num].min=time.tm_min;
+	touchscreen_logs[touchscreen_log_num].second=time.tm_sec;
+	touchscreen_logs[touchscreen_log_num].nanosecond=timespec.tv_nsec;
+	//strcpy(touchscreen_logs[touchscreen_log_num].date,"-");
+	//strcpy(touchscreen_logs[touchscreen_log_num].space1," ");
+	//strcpy(touchscreen_logs[touchscreen_log_num].time1,":");
+	//strcpy(touchscreen_logs[touchscreen_log_num].time2,":");
+	//strcpy(touchscreen_logs[touchscreen_log_num].space2," ");
+	//strcpy(touchscreen_logs[touchscreen_log_num].fingers,"f:");
+	touchscreen_logs[touchscreen_log_num].finger_id=0xf;
+	touchscreen_logs[touchscreen_log_num].finger_status=0xf;
+	touchscreen_logs[touchscreen_log_num].pointer_nums=0xf;
+	touchscreen_log_num++;
+	if (touchscreen_log_num>=touchscreen_log_max)
+		touchscreen_log_num=0;
+#endif
 
- return 0;
+	printk("%s: resume device\n", __func__);
+
+	return;
 }
 
 

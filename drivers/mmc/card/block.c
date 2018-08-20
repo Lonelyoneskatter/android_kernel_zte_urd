@@ -110,6 +110,8 @@ static int max_devices;
 static DECLARE_BITMAP(dev_use, 256);
 static DECLARE_BITMAP(name_use, 256);
 
+#define RECOVERY_MODE_STR "androidboot.mode=recovery"
+
 /*
  * There is one mmc_blk_data per slot.
  */
@@ -135,6 +137,7 @@ struct mmc_blk_data {
 #define MMC_BLK_DISCARD		BIT(2)
 #define MMC_BLK_SECDISCARD	BIT(3)
 #define MMC_BLK_FLUSH		BIT(4)
+#define MMC_BLK_PARTSWITCH	BIT(5)
 
 
 	/*
@@ -1179,8 +1182,13 @@ static inline int mmc_blk_part_switch(struct mmc_card *card,
 		ret = mmc_switch(card, EXT_CSD_CMD_SET_NORMAL,
 				 EXT_CSD_PART_CONFIG, part_config,
 				 card->ext_csd.part_time);
-		if (ret)
+
+		if (ret) {
+			pr_err("%s: mmc_blk_part_switch failure, %d -> %d\n",
+				mmc_hostname(card->host), main_md->part_curr,
+					md->part_type);
 			return ret;
+		}
 
 		card->ext_csd.part_config = part_config;
 		card->part_curr = md->part_type;
@@ -3751,6 +3759,7 @@ static int mmc_blk_issue_rq(struct mmc_queue *mq, struct request *req)
 	struct mmc_host *host = card->host;
 	unsigned long flags;
 	unsigned int cmd_flags = req ? req->cmd_flags : 0;
+	int err;
 
 	if (req && !mq->mqrq_prev->req) {
 		mmc_rpm_hold(host, &card->dev);
@@ -3765,7 +3774,17 @@ static int mmc_blk_issue_rq(struct mmc_queue *mq, struct request *req)
 	}
 
 	ret = mmc_blk_part_switch(card, md);
+
 	if (ret) {
+		err = mmc_blk_reset(md, card->host, MMC_BLK_PARTSWITCH);
+		if (!err) {
+			pr_err("%s: mmc_blk_reset(MMC_BLK_PARTSWITCH) succeeded.\n",
+					mmc_hostname(host));
+			mmc_blk_reset_success(md, MMC_BLK_PARTSWITCH);
+		} else
+			pr_err("%s: mmc_blk_reset(MMC_BLK_PARTSWITCH) failed.\n",
+				mmc_hostname(host));
+
 		if (req) {
 			blk_end_request_all(req, -EIO);
 		}
@@ -4335,12 +4354,15 @@ void do_set_partition_ro(struct mmc_card *card, struct mmc_blk_data *md)
 	/* the write protected partions are according to aboot,the GPT is not in the partition table but also to be considered
 	 *  attention:maybe the GPT is permanent WP and the sbl1 is power on WP, so set_partition_ro() need call from the first partition but not GPT
 	 */
-	set_partition_ro(card,md,"sbl1",7); /*sbl1+DDR+rpm+tz+hyp+fsg+sec */
-	set_partition_ro(card,md,"ztelk",4); /*ztelk+devinfo+splash+echarge */
-	set_partition_ro(card,md,"aboot",4); /*aboot+modem+boot+recovery */
-	set_partition_ro(card,md,"cmnlib",2); /*cmnlib+keymaster */
-	set_partition_ro(card,md,"system",1);
-
+	if (strstr(saved_command_line, RECOVERY_MODE_STR)) {
+	    set_partition_ro(card,md,"fsg",1);
+	} else {
+	    set_partition_ro(card,md,"sbl1",7); /*sbl1+DDR+rpm+tz+hyp+fsg+sec */
+	    set_partition_ro(card,md,"fingerid",4); /*fingerid+devinfo+splash+echarge */
+	    set_partition_ro(card,md,"aboot",4); /*aboot+modem+boot+recovery */
+	    set_partition_ro(card,md,"cmnlib",2); /*cmnlib+keymaster */
+	    set_partition_ro(card,md,"system",1);
+	}
 	if (mmc_card_cmdq(card)) {
 	    if (mmc_cmdq_halt(card->host, false))
 	        pr_err("%s: %s: cmdq unhalt failed\n", mmc_hostname(card->host), __func__);
@@ -4437,6 +4459,8 @@ static void mmc_blk_shutdown(struct mmc_card *card)
 		mmc_rpm_hold(card->host, &card->dev);
 		mmc_claim_host(card->host);
 		mmc_stop_bkops(card);
+		if (mmc_card_doing_auto_bkops(card))
+			mmc_set_auto_bkops(card, false);
 		mmc_release_host(card->host);
 		mmc_send_pon(card);
 		mmc_rpm_release(card->host, &card->dev);

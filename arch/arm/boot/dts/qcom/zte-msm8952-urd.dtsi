@@ -58,8 +58,38 @@
 		qcom,cam-power-seq-cfg-val = <1 1 1>;
 		qcom,cam-power-seq-delay = <1 1 1>;
 		status = "ok";
-		
-	};    
+	};
+eeprom2: qcom,eeprom@2 {
+		compatible = "zte,eeprom-ov13855";
+		cell-index = <2>;
+		reg = <0x2>;
+		qcom,eeprom-name = "ov13855_gt24c64a";
+
+		qcom,slave-addr = <0xa0>;
+		qcom,cci-master = <0>;
+		zte,num-blocks = <1>;
+		qcom,page0 = <0 0x0000 2 0x0 1 0>;
+		qcom,poll0 = <0 0x0000 2 0x0 1 0>;
+		zte,mem0  = <3615 0x0000 2 0x0 1 0>;
+
+//		qcom,saddr0 = <0xA0>;
+		cam_vdig-supply = <&pm8950_s3>;
+		cam_vaf-supply = <&pm8950_l22>;
+		qcom,cam-vreg-name = "cam_vdig","cam_vaf";
+		qcom,cam-vreg-min-voltage = <1300000  2800000>;
+		qcom,cam-vreg-max-voltage = <1300000  2800000>;
+		qcom,cam-vreg-op-mode = <200000  100000>;
+		gpios =<&msm_gpio 41 0>;
+		qcom,gpio-vio = <0>;
+		qcom,gpio-req-tbl-num = <0 >;
+		qcom,gpio-req-tbl-flags = <0>;
+		qcom,gpio-req-tbl-label = "CAM_VIO0";
+		qcom,cam-power-seq-type = "sensor_vreg", "sensor_vreg", "sensor_gpio";
+		qcom,cam-power-seq-val = "cam_vdig", "cam_vaf", "sensor_gpio_vio";
+		qcom,cam-power-seq-cfg-val = <1 1 1>;
+		qcom,cam-power-seq-delay = <1 1 1>;
+		status = "ok";
+};
 	qcom,camera@0 {
 		cell-index = <0>;
 		compatible = "qcom,camera";
@@ -67,7 +97,7 @@
 		qcom,csiphy-sd-index = <0>;
 		qcom,csid-sd-index = <0>;
 		qcom,mount-angle = <90>;
-		qcom,eeprom-src = <&eeprom0 &eeprom1>;
+		qcom,eeprom-src = <&eeprom0 &eeprom1 &eeprom2>;
 		qcom,actuator-src = <&actuator0>;
 		qcom,led-flash-src = <&led_flash0>;
 		cam_vdig-supply = <&pm8950_s3>;

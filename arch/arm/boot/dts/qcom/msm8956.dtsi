@@ -22,7 +22,7 @@
 	interrupt-parent = <&intc>;
 
 	chosen {
-		bootargs = "sched_enable_hmp=1 sched_enable_power_aware=1";
+		bootargs = "sched_enable_hmp=1";
 	};
 
 	aliases {
@@ -1401,6 +1401,7 @@
 			qcom,smd-irq-bitmask = <0x1000>;
 			interrupts = <0 25 1>;
 			label = "modem";
+			qcom,not-loadable;
 		};
 
 		qcom,smsm-modem {
@@ -1599,6 +1600,7 @@
 		qcom,xprt-linkid = <1>;
 		qcom,xprt-version = <1>;
 		qcom,fragmented-data;
+		qcom,disable-pil-loading;
 	};
 
 	qcom,ipc_router_q6_xprt {
@@ -1824,8 +1826,8 @@
 		qcom,dcvs-min-mbperframe = <32400>; /* 3840 x 2160 */
 
 		qcom,load-freq-tbl =
-			<979200 400000000 0xffffffff>, /* NOM+ , UHD30D   */
 			<979200 466000000 0x55555555>, /* TURBO, UHD30E   */
+			<979200 400000000 0xffffffff>, /* NOM+ , UHD30D   */
 			<734400 360000000 0xffffffff>, /* NOM  , 1080p90D */
 			<734400 400000000 0x55555555>, /* NOM+ , 1080p90E */
 			<489600 228570000 0xffffffff>, /* SVS  , 1080p60D */
@@ -2803,7 +2805,7 @@
 		status = "ok";
 		qcom,mode = <1>;
 		qcom,pull = <5>;
-		qcom,vin-sel = <2>;
+		qcom,vin-sel = <0>;
 		qcom,src-sel = <2>;
 		qcom,master-en = <1>;
 		qcom,out-strength = <2>;

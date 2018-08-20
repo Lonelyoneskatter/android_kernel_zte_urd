@@ -393,6 +393,7 @@ struct mdss_dsi_ctrl_pdata {
 	int irq_cnt;
 	int disp_te_gpio;
 	int rst_gpio;
+	bool rst_gpio_keep_high_flag;//pan,keep reset gpio high 0620
 	int disp_en_gpio;
 	int bklt_en_gpio;
 	int lcd_3v_vsp_en_gpio;

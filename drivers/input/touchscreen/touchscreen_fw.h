@@ -18,11 +18,15 @@
 #define SYN_LCE_FW_NAME		"ZTE_P895A80_LCE_S7040_PR1744789_TS4_V3_6_3_35_51503032.img"
 #elif defined(CONFIG_BOARD_URD)
 #define SYN_JUNDA_FW_NAME	"Junda_S7020_P6_1920_1080_36453034_P895T20_PR2224134.img"
-#define SYN_ECW_FW_NAME		"ZTE_P895T20-ECW_8284-PR2082467-s7020_DS4.3.6.3_36393037.img"
+#define SYN_ECW_FW_NAME		"ECW_S7020_6P_1920_1080_36393039_P895T20_PR2082467.img"
+#define SYN_TURLY_FW_NAME	"Truly_S7020_6P_1920_1080_36323034_P895T20_PR2082467.img"
+#define SYN_DIJING_FW_NAME	"DJN_S7020_6P_1920_1080_36493031_P895T20_PR2082467.img"
+#elif defined(CONFIG_BOARD_GEVJON)
+#define SYN_OFILM_FW_NAME		"OFILM_S7060_10P_1920_1200_52343033_P895U90_PR2367474.img"
 #else
 
 #define SYN_TPK_FW_NAME		""
-#define SYN_TURLY_FW_NAME	"" 
+#define SYN_TURLY_FW_NAME	""
 #define SYN_SUCCESS_FW_NAME	""
 #define SYN_OFILM_FW_NAME	""
 #define SYN_LEAD_FW_NAME	""
@@ -33,13 +37,14 @@
 #define SYN_GOWORLD_FW_NAME	""
 #define SYN_BAOMING_FW_NAME	""
 #define SYN_JUNDA_FW_NAME	""
+#define SYN_DIJING_FW_NAME	""
 #define SYN_LCE_FW_NAME	""
 #define SYN_JIAGUAN_FW_NAME	""
-#define SYN_MUDONG_FW_NAME	"" 
-#define SYN_EACHOPTO_FW_NAME	"" 
+#define SYN_MUDONG_FW_NAME	""
+#define SYN_EACHOPTO_FW_NAME	""
 
 #define FTC_TPK_FW_NAME		""
-#define FTC_TURLY_FW_NAME	"" 
+#define FTC_TURLY_FW_NAME	""
 #define FTC_SUCCESS_FW_NAME	""
 #define FTC_OFILM_FW_NAME	""
 #define FTC_LEAD_FW_NAME	""
@@ -52,7 +57,7 @@
 #define FTC_JUNDA_FW_NAME	""
 #define FTC_JIAGUAN_FW_NAME	""
 #define FTC_MUDONG_FW_NAME	""
-#define FTC_EACHOPTO_FW_NAME	"" 
+#define FTC_EACHOPTO_FW_NAME	""
 #define FTC_AVC_FW_NAME	""
 
 #define GTP_SENSOR_ID_1_FW_NAME		""
@@ -63,7 +68,7 @@
 #define GTP_SENSOR_ID_6_FW_NAME		""
 
 #define CY_TPK_FW_NAME		""
-#define CY_TURLY_FW_NAME	"" 
+#define CY_TURLY_FW_NAME	""
 #define CY_SUCCESS_FW_NAME	""
 #define CY_OFILM_FW_NAME	""
 #define CY_LEAD_FW_NAME	""
@@ -75,8 +80,8 @@
 #define CY_BAOMING_FW_NAME	""
 #define CY_JUNDA_FW_NAME	""
 #define CY_JIAGUAN_FW_NAME	""
-#define CY_MUDONG_FW_NAME	"" 
-#define CY_EACHOPTO_FW_NAME	"" 
+#define CY_MUDONG_FW_NAME	""
+#define CY_EACHOPTO_FW_NAME	""
 
 #endif
 
@@ -84,46 +89,49 @@
 #define SYN_TPK_FW_NAME		""
 #endif
 #ifndef SYN_TURLY_FW_NAME
-#define SYN_TURLY_FW_NAME	"" 
+#define SYN_TURLY_FW_NAME	""
 #endif
 #ifndef SYN_SUCCESS_FW_NAME
-#define SYN_SUCCESS_FW_NAME	"" 
+#define SYN_SUCCESS_FW_NAME	""
 #endif
 #ifndef SYN_OFILM_FW_NAME
-#define SYN_OFILM_FW_NAME	"" 
+#define SYN_OFILM_FW_NAME	""
 #endif
 #ifndef SYN_LEAD_FW_NAME
-#define SYN_LEAD_FW_NAME	"" 
+#define SYN_LEAD_FW_NAME	""
 #endif
 #ifndef SYN_WINTEK_FW_NAME
-#define SYN_WINTEK_FW_NAME	"" 
+#define SYN_WINTEK_FW_NAME	""
 #endif
 #ifndef SYN_LAIBAO_FW_NAME
-#define SYN_LAIBAO_FW_NAME	"" 
+#define SYN_LAIBAO_FW_NAME	""
 #endif
 #ifndef SYN_CMI_FW_NAME
-#define SYN_CMI_FW_NAME		"" 
+#define SYN_CMI_FW_NAME		""
 #endif
 #ifndef SYN_ECW_FW_NAME
-#define SYN_ECW_FW_NAME		"" 
+#define SYN_ECW_FW_NAME		""
 #endif
 #ifndef SYN_GOWORLD_FW_NAME
-#define SYN_GOWORLD_FW_NAME	"" 
+#define SYN_GOWORLD_FW_NAME	""
 #endif
 #ifndef SYN_BAOMING_FW_NAME
-#define SYN_BAOMING_FW_NAME	"" 
+#define SYN_BAOMING_FW_NAME	""
 #endif
 #ifndef SYN_JUNDA_FW_NAME
-#define SYN_JUNDA_FW_NAME	"" 
+#define SYN_JUNDA_FW_NAME	""
 #endif
 #ifndef SYN_JIAGUAN_FW_NAME
-#define SYN_JIAGUAN_FW_NAME	"" 
+#define SYN_JIAGUAN_FW_NAME	""
 #endif
 #ifndef SYN_MUDONG_FW_NAME
-#define SYN_MUDONG_FW_NAME	"" 
+#define SYN_MUDONG_FW_NAME	""
+#endif
+#ifndef SYN_DIJING_FW_NAME
+#define SYN_DIJING_FW_NAME	""
 #endif
 #ifndef SYN_EACHOPTO_FW_NAME
-#define SYN_EACHOPTO_FW_NAME	"" 
+#define SYN_EACHOPTO_FW_NAME	""
 #endif
 
 
@@ -134,50 +142,50 @@
 #define FTC_TPK_FW_NAME		""
 #endif
 #ifndef FTC_TURLY_FW_NAME
-#define FTC_TURLY_FW_NAME	"" 
+#define FTC_TURLY_FW_NAME	""
 #endif
 #ifndef FTC_SUCCESS_FW_NAME
-#define FTC_SUCCESS_FW_NAME	"" 
+#define FTC_SUCCESS_FW_NAME	""
 #endif
 #ifndef FTC_OFILM_FW_NAME
-#define FTC_OFILM_FW_NAME	"" 
+#define FTC_OFILM_FW_NAME	""
 #endif
 #ifndef FTC_LEAD_FW_NAME
-#define FTC_LEAD_FW_NAME	"" 
+#define FTC_LEAD_FW_NAME	""
 #endif
 #ifndef FTC_WINTEK_FW_NAME
-#define FTC_WINTEK_FW_NAME	"" 
+#define FTC_WINTEK_FW_NAME	""
 #endif
 #ifndef FTC_LAIBAO_FW_NAME
-#define FTC_LAIBAO_FW_NAME	"" 
+#define FTC_LAIBAO_FW_NAME	""
 #endif
 #ifndef FTC_CMI_FW_NAME
-#define FTC_CMI_FW_NAME		"" 
+#define FTC_CMI_FW_NAME		""
 #endif
 #ifndef FTC_ECW_FW_NAME
-#define FTC_ECW_FW_NAME		"" 
+#define FTC_ECW_FW_NAME		""
 #endif
 #ifndef FTC_GOWORLD_FW_NAME
-#define FTC_GOWORLD_FW_NAME	"" 
+#define FTC_GOWORLD_FW_NAME	""
 #endif
 #ifndef FTC_BAOMING_FW_NAME
-#define FTC_BAOMING_FW_NAME	"" 
+#define FTC_BAOMING_FW_NAME	""
 #endif
 #ifndef FTC_JUNDA_FW_NAME
-#define FTC_JUNDA_FW_NAME	"" 
+#define FTC_JUNDA_FW_NAME	""
 #endif
 #ifndef FTC_JIAGUAN_FW_NAME
-#define FTC_JIAGUAN_FW_NAME	"" 
+#define FTC_JIAGUAN_FW_NAME	""
 #endif
 #ifndef FTC_MUDONG_FW_NAME
-#define FTC_MUDONG_FW_NAME	"" 
+#define FTC_MUDONG_FW_NAME	""
 #endif
 #ifndef FTC_EACHOPTO_FW_NAME
-#define FTC_EACHOPTO_FW_NAME	"" 
+#define FTC_EACHOPTO_FW_NAME	""
 #endif
 
 #ifndef FTC_AVC_FW_NAME
-#define FTC_AVC_FW_NAME	"" 
+#define FTC_AVC_FW_NAME	""
 #endif
 
 #ifndef GTP_SENSOR_ID_1_FW_NAME
@@ -203,49 +211,49 @@
 #define CY_TPK_FW_NAME		""
 #endif
 #ifndef CY_TURLY_FW_NAME
-#define CY_TURLY_FW_NAME	"" 
+#define CY_TURLY_FW_NAME	""
 #endif
 #ifndef CY_SUCCESS_FW_NAME
-#define CY_SUCCESS_FW_NAME	"" 
+#define CY_SUCCESS_FW_NAME	""
 #endif
 #ifndef CY_OFILM_FW_NAME
-#define CY_OFILM_FW_NAME	"" 
+#define CY_OFILM_FW_NAME	""
 #endif
 #ifndef CY_LEAD_FW_NAME
-#define CY_LEAD_FW_NAME	"" 
+#define CY_LEAD_FW_NAME	""
 #endif
 #ifndef CY_WINTEK_FW_NAME
-#define CY_WINTEK_FW_NAME	"" 
+#define CY_WINTEK_FW_NAME	""
 #endif
 #ifndef CY_LAIBAO_FW_NAME
-#define CY_LAIBAO_FW_NAME	"" 
+#define CY_LAIBAO_FW_NAME	""
 #endif
 #ifndef CY_CMI_FW_NAME
-#define CY_CMI_FW_NAME		"" 
+#define CY_CMI_FW_NAME		""
 #endif
 #ifndef CY_ECW_FW_NAME
-#define CY_ECW_FW_NAME		"" 
+#define CY_ECW_FW_NAME		""
 #endif
 #ifndef CY_GOWORLD_FW_NAME
-#define CY_GOWORLD_FW_NAME	"" 
+#define CY_GOWORLD_FW_NAME	""
 #endif
 #ifndef CY_BAOMING_FW_NAME
-#define CY_BAOMING_FW_NAME	"" 
+#define CY_BAOMING_FW_NAME	""
 #endif
 #ifndef CY_JUNDA_FW_NAME
-#define CY_JUNDA_FW_NAME	"" 
+#define CY_JUNDA_FW_NAME	""
 #endif
 #ifndef CY_JIAGUAN_FW_NAME
-#define CY_JIAGUAN_FW_NAME	"" 
+#define CY_JIAGUAN_FW_NAME	""
 #endif
 #ifndef CY_MUDONG_FW_NAME
-#define CY_MUDONG_FW_NAME	"" 
+#define CY_MUDONG_FW_NAME	""
 #endif
 #ifndef CY_EACHOPTO_FW_NAME
-#define CY_EACHOPTO_FW_NAME	"" 
+#define CY_EACHOPTO_FW_NAME	""
 #endif
 #ifndef SYN_LCE_FW_NAME
-#define SYN_LCE_FW_NAME	"" 
+#define SYN_LCE_FW_NAME	""
 #endif
 
 /*
@@ -267,9 +275,10 @@ enum TOUCH_MOUDLE
 	JUNDA,
 	JIAGUAN,
 	MUDONG,
-	EACHOPTO,		
+	EACHOPTO,
 	//AVC,
 	LCE,
+	DIJING,
 	UNKNOW=0xff
 };
 #define SYN_MOUDLE_NUM_MAX 20
@@ -318,7 +327,7 @@ GTP_SENSOR_ID_2_FW_NAME,
 GTP_SENSOR_ID_3_FW_NAME,
 GTP_SENSOR_ID_4_FW_NAME,
 GTP_SENSOR_ID_5_FW_NAME,
-GTP_SENSOR_ID_6_FW_NAME,	
+GTP_SENSOR_ID_6_FW_NAME,
 };
 int touch_moudle;
 #endif

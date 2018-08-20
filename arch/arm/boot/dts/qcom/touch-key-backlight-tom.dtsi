@@ -15,6 +15,8 @@
 				pinctrl-1 = <&ts_int_suspend &ts_reset_suspend>;
 				pinctrl-2 = <&ts_release>;
 				synaptics,max_y = <0>;
+				synaptics,lcd-gpio-1 = <&msm_gpio 2 0x2008>;
+				synaptics,lcd-gpio-2 = <&msm_gpio 92 0x2008>;
 				synaptics,irq-gpio = <&msm_gpio 65 0x2008>;
 				synaptics,reset-gpio = <&msm_gpio 64 0x0>;
 				synaptics,i2c-pull-up;

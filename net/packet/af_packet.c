@@ -1755,6 +1755,9 @@ static int tpacket_rcv(struct sk_buff *skb, struct net_device *dev,
 	if (skb->ip_summed == CHECKSUM_PARTIAL)
 		status |= TP_STATUS_CSUMNOTREADY;
 
+	if (skb->ip_summed == CHECKSUM_UNNECESSARY)
+		status |= TP_STATUS_CSUM_UNNECESSARY;
+
 	snaplen = skb->len;
 
 	res = run_filter(skb, sk, snaplen);
@@ -3158,6 +3161,8 @@ packet_setsockopt(struct socket *sock, int level, int optname, char __user *optv
 			return -EBUSY;
 		if (copy_from_user(&val, optval, sizeof(val)))
 			return -EFAULT;
+		if (val > INT_MAX)
+			return -EINVAL;
 		po->tp_reserve = val;
 		return 0;
 	}
@@ -3653,6 +3658,8 @@ static int packet_set_ring(struct sock *sk, union tpacket_req_u *req_u,
 
 		rb->frames_per_block = req->tp_block_size/req->tp_frame_size;
 		if (unlikely(rb->frames_per_block <= 0))
+			goto out;
+		if (unlikely(req->tp_block_size > UINT_MAX / req->tp_block_nr))
 			goto out;
 		if (unlikely((rb->frames_per_block * req->tp_block_nr) !=
 					req->tp_frame_nr))

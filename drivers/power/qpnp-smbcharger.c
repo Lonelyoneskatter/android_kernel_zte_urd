@@ -4278,8 +4278,8 @@ static bool is_usbin_uv_high(struct smbchg_chip *chip)
 #define DEFAULT_SDP_MA		100
 
 #if defined(CONFIG_BOARD_URD)  || defined(CONFIG_BOARD_JASMINE)
-#define DEFAULT_WALL_CHG_MA	2100
-#define DEFAULT_CDP_MA		2100
+#define DEFAULT_WALL_CHG_MA	1500
+#define DEFAULT_CDP_MA		1500
 #else
 #define DEFAULT_WALL_CHG_MA	1500
 #define DEFAULT_CDP_MA		1500
@@ -5509,8 +5509,8 @@ static irqreturn_t batt_cold_handler(int irq, void *_chip)
 			get_prop_batt_health(chip));
 	return IRQ_HANDLED;
 }
-#define WARM_DECIDEGC 430
-#define WARM_RESUME_DECIDEGC 410
+#define WARM_DECIDEGC 450
+#define WARM_RESUME_DECIDEGC 430
 
 static irqreturn_t batt_warm_handler(int irq, void *_chip)
 {

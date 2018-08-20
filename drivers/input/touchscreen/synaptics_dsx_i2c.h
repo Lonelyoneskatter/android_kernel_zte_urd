@@ -211,6 +211,7 @@ struct synaptics_rmi4_data {
 	struct synaptics_rmi4_device_info rmi4_mod_info;
 	struct regulator *regulator;
 	struct mutex rmi4_io_ctrl_mutex;
+	struct mutex rmi4_free_fingers_mutex;
 	#ifdef CONFIG_HAS_EARLYSUSPEND
 	struct early_suspend early_suspend;
 	#endif
@@ -240,9 +241,10 @@ struct synaptics_rmi4_data {
 	bool flip_y;
 	bool fb_ready;
 	bool flash_prog_mode;
+	bool stay_awake;
 	unsigned int reset_delay_ms;
 	wait_queue_head_t wait;
-	struct work_struct  work;	
+	struct work_struct  work;
 	struct rmi_config_id		config_id;
 	struct pinctrl *ts_pinctrl;
 	struct pinctrl_state *gpio_state_active;

@@ -73,7 +73,9 @@ enum aw2013_mode {
 	AW2013_MODE_GREEN_ON ,          /*green led on for p852a01*/
 	AW2013_MODE_MID_ON ,
 	AW2013_MODE_SIDE_ON ,	
-	AW2013_MODE_ALL_OFF,             /* all off */                     
+	AW2013_MODE_ALL_OFF,             /* all off */
+	AW2013_MODE_BLINK_RED_3p5,
+	AW2013_MODE_BLINK_GREEN_3p5
 };
 
 struct aw2013_mode_map {
@@ -101,6 +103,8 @@ static struct aw2013_mode_map mode_map[] = {
 	{ "mid_on",  AW2013_MODE_MID_ON },
 	{ "side_on", AW2013_MODE_SIDE_ON },	
 	{ "all_off", AW2013_MODE_ALL_OFF },
+	{ "blink_red_3p5", AW2013_MODE_BLINK_RED_3p5 },
+	{ "blink_green_3p5", AW2013_MODE_BLINK_GREEN_3p5 },
 };
 
 enum aw2013_pause {
@@ -306,61 +310,49 @@ static int aw2013_set_registers(struct aw2013_data *drvdata)
 	case AW2013_MODE_BLINK_1:    //Breath slow. For charger
 	    printk("%s: entry  AW2013_MODE_BLINK_1\n",__func__);
 		aw2013_write_init(drvdata);
-        
 		aw2013_register_write(drvdata,buf,LCFG0_EN,0x71);// enable the register of LEDO
-		
 		aw2013_register_write(drvdata,buf,LED0T0,0x32);//LED0 T1:rising 011 = 1.04s	 T2:011 brightness keeper 0.52s
 		aw2013_register_write(drvdata,buf,LED0T1,0x34);//LED0 T3:falling 011 = 1.04s	 T4:001 dark keeper 2.08s 
 		aw2013_register_write(drvdata,buf,LED0T2,0x40);//blink always
-					
 		aw2013_register_write(drvdata,buf,AW_PWM0,0xff);//bringhtness=256
-		
 		break;
 	case AW2013_MODE_BLINK_2:	//Breath fast. For power on.
 		printk("%s: entry  AW2013_MODE_BLINK_2\n",__func__);
 		aw2013_write_init(drvdata);
 		aw2013_register_write(drvdata,buf,LCFG0_EN,0x71);// enable the register of LEDO
-		
 		aw2013_register_write(drvdata,buf,LED0T0,0x33);//LED0 T1:rising 011 = 1.04s	 T2:011 brightness keeper 1.04s
 		aw2013_register_write(drvdata,buf,LED0T1,0x35);//LED0 T3:falling 011 = 1.04s	 T4:001 dark keeper 4.16s 
 		aw2013_register_write(drvdata,buf,LED0T2,0x40);//blink always
-		
 		aw2013_register_write(drvdata,buf,AW_PWM0,0xff);//bringhtness=256
 		break;
 	case AW2013_MODE_BLINK_3:  //Breath between BLINK_1 and BLINK_2. For missed message .
 		printk("%s: entry  AW2013_MODE_BLINK_3\n",__func__);
 		aw2013_write_init(drvdata);
 		aw2013_register_write(drvdata,buf,LCFG0_EN,0x71);// enable the register of LEDO
-		
 		aw2013_register_write(drvdata,buf,LED0T0,0x32);//LED0 T1:rising 011 = 1.04s	 T2:011 brightness keeper 0.52s
 		aw2013_register_write(drvdata,buf,LED0T1,0x32);//LED0 T3:falling 011 = 1.04s	 T4:001 brightness keeper 0.52s 
 		aw2013_register_write(drvdata,buf,LED0T2,0x40);//blink always
-		
 		aw2013_register_write(drvdata,buf,AW_PWM0,0xff);//bringhtness=256
-		
 		break;
 	case AW2013_MODE_BLINK_4:
 		 printk("%s: entry  AW2013_MODE_BLINK_4\n",__func__);
 		 aw2013_write_init(drvdata);
 		 aw2013_register_write(drvdata,buf,LCFG0_EN,0x11);// enable the register of LEDO
-		 
 		 aw2013_register_write(drvdata,buf,AW_PWM0,0xff);//bringhtness=256
 		 break;
     case AW2013_MODE_BLINK_5:
 		printk("%s: entry  AW2013_MODE_BLINK_5\n",__func__);
 		aw2013_write_init(drvdata);
 		aw2013_register_write(drvdata,buf,LCFG0_EN,0x71);// enable the register of LEDO
-
 		aw2013_register_write(drvdata,buf,LED0T0,0x33);//LED0 T1:rising 011 = 1.04s	 T2:011 brightness keeper 1.04s
 		aw2013_register_write(drvdata,buf,LED0T1,0x35);//LED0 T3:falling 011 = 1.04s	 T4:001 dark keeper 2.08s 
 		aw2013_register_write(drvdata,buf,LED0T2,0x40);//blink always
-
 		aw2013_register_write(drvdata,buf,AW_PWM0,0xff);//bringhtness=256
 		break;
     case AW2013_MODE_BLINK_6:    //Breath slow. For charger
 		printk("%s: entry  AW2013_MODE_BLINK_6\n",__func__);
 		aw2013_write_init(drvdata);
-	    aw2013_register_write(drvdata,buf,LCFG2_EN,0x71);// enable the register of LEDO
+		aw2013_register_write(drvdata,buf,LCFG2_EN,0x71);// enable the register of LEDO
 		aw2013_register_write(drvdata,buf,LED2T0,0x32);//LED0 T1:rising 011 = 1.04s	 T2:011 brightness keeper 0.52s
 		aw2013_register_write(drvdata,buf,LED2T1,0x34);//LED0 T3:falling 011 = 1.04s	 T4:001 dark keeper 2.08s 
 		aw2013_register_write(drvdata,buf,LED2T2,0x40);//blink always
@@ -369,63 +361,63 @@ static int aw2013_set_registers(struct aw2013_data *drvdata)
     case AW2013_MODE_BLINK_7:    //Breath slow. For charger
 		printk("%s: entry  AW2013_MODE_BLINK_7\n",__func__);
 		aw2013_write_init(drvdata);
-	    aw2013_register_write(drvdata,buf,LCFG2_EN,0x71);// enable the register of LEDO
+		aw2013_register_write(drvdata,buf,LCFG2_EN,0x71);// enable the register of LEDO
 		aw2013_register_write(drvdata,buf,LED2T0,0x02);//LED0 T1:rising 011 = 1.04s	 T2:011 brightness keeper 0.52s
 		aw2013_register_write(drvdata,buf,LED2T1,0x01);//LED0 T3:falling 011 = 1.04s	 T4:001 dark keeper 2.08s 
 		aw2013_register_write(drvdata,buf,LED2T2,0x40);//blink always
 		aw2013_register_write(drvdata,buf,AW_PWM2,0x80);//bringhtness=256
 		break;
 	case AW2013_MODE_BREATH_RED:    //Breath slow. For charger
-		printk("%s: entry  AW2013_MODE_BLINK_7\n",__func__);
+		printk("%s: entry  AW2013_MODE_BREATH_RED\n",__func__);
 		aw2013_write_init(drvdata);
-	    aw2013_register_write(drvdata,buf,LCFG0_EN,0x71);// enable the register of LEDO
-		aw2013_register_write(drvdata,buf,LED0T0,0x33);//LED0 T1:rising 011 = 1.04s	 T2:011 brightness keeper 0.52s
+		aw2013_register_write(drvdata,buf,LCFG0_EN,0x71);// enable the register of LEDO
+		aw2013_register_write(drvdata,buf,LED0T0,0x33);//LED0 T1:rising 011 = 1.04s	 T2:011 brightness keeper1.04s
 		aw2013_register_write(drvdata,buf,LED0T1,0x34);//LED0 T3:falling 011 = 1.04s	 T4:001 dark keeper 2.08s 
 		aw2013_register_write(drvdata,buf,LED0T2,0x40);//blink always
 		aw2013_register_write(drvdata,buf,AW_PWM0,0x80);//bringhtness=256
 		break;
 	case AW2013_MODE_BREATH_GREEN:    //Breath slow. For charger
-		printk("%s: entry  AW2013_MODE_BLINK_7\n",__func__);
+		printk("%s: entry  AW2013_MODE_BREATH_GREEN\n",__func__);
 		aw2013_write_init(drvdata);
-	    aw2013_register_write(drvdata,buf,LCFG1_EN,0x71);// enable the register of LEDO
-		aw2013_register_write(drvdata,buf,LED1T0,0x33);//LED0 T1:rising 011 = 1.04s	 T2:011 brightness keeper 0.52s
+		aw2013_register_write(drvdata,buf,LCFG1_EN,0x71);// enable the register of LEDO
+		aw2013_register_write(drvdata,buf,LED1T0,0x33);//LED0 T1:rising 011 = 1.04s	 T2:011 brightness keeper 1.04s
 		aw2013_register_write(drvdata,buf,LED1T1,0x34);//LED0 T3:falling 011 = 1.04s	 T4:001 dark keeper 2.08s 
 		aw2013_register_write(drvdata,buf,LED1T2,0x40);//blink always
 		aw2013_register_write(drvdata,buf,AW_PWM1,0x80);//bringhtness=256
 		break;
 	case AW2013_MODE_BREATH_BLUE:    //Breath slow. For charger
-		printk("%s: entry  AW2013_MODE_BLINK_7\n",__func__);
+		printk("%s: entry  AW2013_MODE_BREATH_BLUE\n",__func__);
 		aw2013_write_init(drvdata);
-	    aw2013_register_write(drvdata,buf,LCFG2_EN,0x71);// enable the register of LEDO
-		aw2013_register_write(drvdata,buf,LED2T0,0x33);//LED0 T1:rising 011 = 1.04s	 T2:011 brightness keeper 0.52s
+		aw2013_register_write(drvdata,buf,LCFG2_EN,0x71);// enable the register of LEDO
+		aw2013_register_write(drvdata,buf,LED2T0,0x33);//LED0 T1:rising 011 = 1.04s	 T2:011 brightness keeper 1.04s
 		aw2013_register_write(drvdata,buf,LED2T1,0x34);//LED0 T3:falling 011 = 1.04s	 T4:001 dark keeper 2.08s 
 		aw2013_register_write(drvdata,buf,LED2T2,0x40);//blink always
 		aw2013_register_write(drvdata,buf,AW_PWM2,0x80);//bringhtness=256
 		break;
 	case AW2013_MODE_BLINK_RED:    //Breath slow. For charger
-		printk("%s: entry  AW2013_MODE_BLINK_7\n",__func__);
+		printk("%s: entry  AW2013_MODE_BLINK_RED\n",__func__);
 		aw2013_write_init(drvdata);
-	    aw2013_register_write(drvdata,buf,LCFG0_EN,0x71);// enable the register of LEDO
-		aw2013_register_write(drvdata,buf,LED0T0,0x03);//LED0 T1:rising 011 = 1.04s	 T2:011 brightness keeper 0.52s
-		aw2013_register_write(drvdata,buf,LED0T1,0x04);//LED0 T3:falling 011 = 1.04s	 T4:001 dark keeper 2.08s 
+		aw2013_register_write(drvdata,buf,LCFG0_EN,0x71);// enable the register of LEDO
+		aw2013_register_write(drvdata,buf,LED0T0,0x03);//LED0 T1:rising 011 = 0.13s	 T2:011 brightness keeper1.04s
+		aw2013_register_write(drvdata,buf,LED0T1,0x04);//LED0 T3:falling 011 = 0.13s	 T4:001 dark keeper 2.08s 
 		aw2013_register_write(drvdata,buf,LED0T2,0x40);//blink always
 		aw2013_register_write(drvdata,buf,AW_PWM0,0x80);//bringhtness=256
 		break;
 	case AW2013_MODE_BLINK_GREEN:    //Breath slow. For charger
 		printk("%s: entry  AW2013_MODE_BLINK_7\n",__func__);
 		aw2013_write_init(drvdata);
-	    aw2013_register_write(drvdata,buf,LCFG1_EN,0x71);// enable the register of LEDO
-		aw2013_register_write(drvdata,buf,LED1T0,0x03);//LED0 T1:rising 011 = 1.04s	 T2:011 brightness keeper 0.52s
-		aw2013_register_write(drvdata,buf,LED1T1,0x04);//LED0 T3:falling 011 = 1.04s	 T4:001 dark keeper 2.08s 
+		aw2013_register_write(drvdata,buf,LCFG1_EN,0x71);// enable the register of LEDO
+		aw2013_register_write(drvdata,buf,LED1T0,0x03);//LED0 T1:rising 011 = 0.13s	 T2:011 brightness keeper 1.04s
+		aw2013_register_write(drvdata,buf,LED1T1,0x04);//LED0 T3:falling 011 = 0.13s	 T4:001 dark keeper 2.08s 
 		aw2013_register_write(drvdata,buf,LED1T2,0x40);//blink always
 		aw2013_register_write(drvdata,buf,AW_PWM1,0x80);//bringhtness=256
 		break;
 	case AW2013_MODE_BLINK_BLUE:    //Breath slow. For charger
-		printk("%s: entry  AW2013_MODE_BLINK_7\n",__func__);
+		printk("%s: entry  AW2013_MODE_BLINK_BLUE\n",__func__);
 		aw2013_write_init(drvdata);
-	    aw2013_register_write(drvdata,buf,LCFG2_EN,0x71);// enable the register of LEDO
-		aw2013_register_write(drvdata,buf,LED2T0,0x03);//LED0 T1:rising 011 = 1.04s	 T2:011 brightness keeper 0.52s
-		aw2013_register_write(drvdata,buf,LED2T1,0x04);//LED0 T3:falling 011 = 1.04s	 T4:001 dark keeper 2.08s 
+		aw2013_register_write(drvdata,buf,LCFG2_EN,0x71);// enable the register of LEDO
+		aw2013_register_write(drvdata,buf,LED2T0,0x03);//LED0 T1:rising 011 = 0.13s	 T2:011 brightness keeper 1.04s
+		aw2013_register_write(drvdata,buf,LED2T1,0x04);//LED0 T3:falling 011 = 0.13s	 T4:001 dark keeper 2.08s 
 		aw2013_register_write(drvdata,buf,LED2T2,0x40);//blink always
 		aw2013_register_write(drvdata,buf,AW_PWM2,0x80);//bringhtness=256
 		break;
@@ -462,7 +454,7 @@ static int aw2013_set_registers(struct aw2013_data *drvdata)
 		aw2013_register_write(drvdata,buf,AW_PWM1,0x00);
 		break;
 	case AW2013_MODE_SIDE_ON:
-		printk("%s: entry  AW2013_MODE_MID_ON\n",__func__);
+		printk("%s: entry  AW2013_MODE_SIDE_ON\n",__func__);
 		aw2013_write_init(drvdata);
 		aw2013_register_write(drvdata,buf,LCFG0_EN,0x61);// enable the register of LEDO
 		aw2013_register_write(drvdata,buf,LCFG1_EN,0x61);// enable the register of LED1
@@ -480,7 +472,24 @@ static int aw2013_set_registers(struct aw2013_data *drvdata)
 		aw2013_register_write(drvdata,buf,AW_PWM1,0x00); 
 		aw2013_register_write(drvdata,buf,AW_PWM2,0x00); 
 		break;
-	
+	case AW2013_MODE_BLINK_RED_3p5://Breath slow. For charger
+		printk("%s: entry  AW2013_MODE_BLINK_RED_3p5\n",__func__);
+		aw2013_write_init(drvdata);
+		aw2013_register_write(drvdata,buf,LCFG0_EN,0x71);// enable the register of LEDO
+		aw2013_register_write(drvdata,buf,LED0T0,0x02);//LED0 T1:rising 011 = 0.13s	 T2:011 brightness keeper0.52s
+		aw2013_register_write(drvdata,buf,LED0T1,0x05);//LED0 T3:falling 011 = 0.13s	 T4:001 dark keeper 4.16s 
+		aw2013_register_write(drvdata,buf,LED0T2,0x40);//blink always
+		aw2013_register_write(drvdata,buf,AW_PWM0,0x80);//bringhtness=256
+		break;
+	case AW2013_MODE_BLINK_GREEN_3p5:    //Breath slow. For charger
+		printk("%s: entry  AW2013_MODE_BLINK_GREEN_3p5\n",__func__);
+		aw2013_write_init(drvdata);
+		aw2013_register_write(drvdata,buf,LCFG1_EN,0x71);// enable the register of LEDO
+		aw2013_register_write(drvdata,buf,LED1T0,0x02);//LED0 T1:rising 011 = 0.13s	 T2:011 brightness keeper 0.52s
+		aw2013_register_write(drvdata,buf,LED1T1,0x05);//LED0 T3:falling 011 = 0.13s	 T4:001 dark keeper 4.16s 
+		aw2013_register_write(drvdata,buf,LED1T2,0x40);//blink always
+		aw2013_register_write(drvdata,buf,AW_PWM1,0x80);//bringhtness=256
+		break;
 	default:
 		printk("%s: entry  default\n",__func__);
 		//shuangan begin

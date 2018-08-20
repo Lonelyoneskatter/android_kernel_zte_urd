@@ -18,6 +18,7 @@
 
 #include "dsi-panel-zte-boe-jd9366-boe-8p0-800p-video.dtsi"
 #include "dsi-panel-zte-xingyuan-rm72013-auo-8p0-800p-video.dtsi"
+#include "dsi-panel-zte-xingyuan-rm68200-auo-8p0-800p-video.dtsi"
 
 
 / {
@@ -39,7 +40,7 @@
 };
 &pmi8950_charger {
 	qcom,float-voltage-mv = <4350>;
-	qcom,fastchg-current-ma = <3200>;
+	qcom,fastchg-current-ma = <2300>;
 	qcom,force-aicl-rerun;
 };
 &pmi8950_fg{
@@ -64,5 +65,10 @@
 	qcom,ulps-enabled;
 };
 
+&dsi_xingyuan_rm68200_auo_8p0_800P_video_vid {
+	//qcom,panel-supply-entries = <&dsi_panel_pwr_supply>; //zte_tzb delete, otherwise many LCD errors and panel can not wake up.
+	qcom,panel-supply-entries = <&dsi_panel_pwr_supply_no_labibb>;
+	qcom,ulps-enabled;
+};
 
 

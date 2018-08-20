@@ -756,16 +756,23 @@ static void ipa_rx_switch_to_intr_mode(struct ipa_sys_context *sys)
 {
 	int ret;
 
-	if (!atomic_read(&sys->curr_polling_state)) {
-		IPAERR("already in intr mode\n");
-		goto fail;
-	}
-
 	ret = sps_get_config(sys->ep->ep_hdl, &sys->ep->connect);
 	if (ret) {
 		IPAERR("sps_get_config() failed %d\n", ret);
 		goto fail;
 	}
+
+	if (!atomic_read(&sys->curr_polling_state) &&
+		((sys->ep->connect.options & SPS_O_EOT) == SPS_O_EOT)) {
+		IPADBG("already in intr mode\n");
+		return;
+	}
+
+	if (!atomic_read(&sys->curr_polling_state)) {
+		IPAERR("Not in poll mode, and IRQ not enabled.\n");
+		goto fail;
+	}
+
 	sys->event.options = SPS_O_EOT;
 	ret = sps_register_event(sys->ep->ep_hdl, &sys->event);
 	if (ret) {
@@ -802,6 +809,15 @@ fail:
 static void ipa_sps_irq_control(struct ipa_sys_context *sys, bool enable)
 {
 	int ret;
+	/*
+	* Do not change sps config in case we are in polling mode as this
+	* indicates that sps driver already notified EOT event and sps config
+	* should not change until ipa driver processes the packet.
+	*/
+	if (atomic_read(&sys->curr_polling_state)) {
+		IPADBG("in polling mode, do not change config\n");
+		return;
+	}
 
 	if (enable) {
 		ret = sps_get_config(sys->ep->ep_hdl, &sys->ep->connect);

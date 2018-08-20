@@ -469,7 +469,7 @@ int ip_rcv(struct sk_buff *skb, struct net_device *dev, struct packet_type *pt, 
 		struct tcphdr *th = (struct tcphdr *) (skb->data+(iph->ihl<<2));
 
 /*ignore checking tcp pkts correct*/
-              pr_info("[IP]  TCP RCV len = %d, %d (%s) [%d (%s)],  (%s:%d <- %s:%d),F:%d%d%d%d%d%d%d%d\n", 
+              pr_info("[IP]  TCP RCV len = %d, Gpid:%d (%s) [pid:%d (%s)],  (%s:%d <- %s:%d),F:%d%d%d%d%d%d%d%d\n", 
 			     ntohs(iph->tot_len),
 			     current->group_leader->pid, current->group_leader->comm,
                           current->pid, current->comm,
@@ -481,7 +481,7 @@ int ip_rcv(struct sk_buff *skb, struct net_device *dev, struct packet_type *pt, 
 	 {
 	       struct udphdr *uh = (struct udphdr *)(skb->data+(iph->ihl<<2));
 /*ignore checking udp pkts correct*/
-              pr_info("[IP]  UDP RCV len = %d, %d (%s) [%d (%s)],  (%s:%d <- %s:%d)\n", 
+              pr_info("[IP]  UDP RCV len = %d, Gpid:%d (%s) [pid:%d (%s)],  (%s:%d <- %s:%d)\n", 
 			     ntohs(iph->tot_len),
 			     current->group_leader->pid, current->group_leader->comm,
                           current->pid, current->comm,
@@ -493,7 +493,7 @@ int ip_rcv(struct sk_buff *skb, struct net_device *dev, struct packet_type *pt, 
 	      struct icmphdr *icmph = (struct icmphdr *)(skb->data+(iph->ihl<<2));
 
 /*ignore checking icmp pkts correct*/
-              pr_info("[IP]  ICMP RCV len = %d, %d (%s) [%d (%s)],  (%s <- %s) , T: %d,C: %d\n", 
+              pr_info("[IP]  ICMP RCV len = %d, Gpid:%d (%s) [pid:%d (%s)],  (%s <- %s) , T: %d,C: %d\n", 
 			     ntohs(iph->tot_len),
 			     current->group_leader->pid, current->group_leader->comm,
                           current->pid, current->comm,
@@ -503,7 +503,7 @@ int ip_rcv(struct sk_buff *skb, struct net_device *dev, struct packet_type *pt, 
 	 }	 
 	 else
 	 {
-            pr_info("[IP]  RCV len = %d, %d (%s) [%d (%s)], (%s <- %s), TP = %d \n", 
+            pr_info("[IP]  RCV len = %d, Gpid:%d (%s) [pid:%d (%s)], (%s <- %s), TP = %d \n", 
 			     ntohs(iph->tot_len),
 	                   current->group_leader->pid, current->group_leader->comm,			     
                           current->pid, current->comm,

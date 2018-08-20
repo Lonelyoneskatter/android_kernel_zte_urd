@@ -274,7 +274,7 @@ if (tcp_socket_debugfs & 0x00000001)
 /*ZTE_LC_IP_DEBUG, 20130509 start*/
             if (strcmp(inet_ntop(AF_INET, &(inet->inet_saddr), stmp, 50), "127.0.0.1"))
 /*ZTE_LC_IP_DEBUG, 20130509 end*/
-            pr_info("%s [TCP] ESTAB pid = %d (%s), Gpid = %d (%s) (%s:%d <- %s:%d)\n", buf, 
+            pr_info("%s [TCP] ESTAB pid:%d (%s), Gpid:%d (%s) (%s:%d <- %s:%d)\n", buf, 
                           current->pid, current->comm,
 	                   current->group_leader->pid, current->group_leader->comm,
 	   		     inet_ntop(AF_INET, &(inet->inet_saddr), stmp, 50), ntohs(inet->inet_sport),
@@ -651,7 +651,7 @@ if (tcp_socket_debugfs & 0x00000001)
 /*ZTE_LC_IP_DEBUG, 20130509 start*/
                    if (strcmp(inet_ntop(AF_INET, &(inet->inet_saddr), stmp, 50), "127.0.0.1"))
 /*ZTE_LC_IP_DEBUG, 20130509 end*/		 
-		     pr_info("%s [TCP] Rx D_len = %d , pid = %d (%s) , Gpid = %d (%s)  (%s:%d <- %s:%d)\n", buf, skb->len, current->pid, current->comm, current->group_leader->pid, current->group_leader->comm,
+		     pr_info("%s [TCP] Rx D_len = %d , pid:%d (%s) , Gpid:%d (%s)  (%s:%d <- %s:%d)\n", buf, skb->len, current->pid, current->comm, current->group_leader->pid, current->group_leader->comm,
 				    inet_ntop(AF_INET, &(inet->inet_saddr), stmp, 50), ntohs(inet->inet_sport),
 				    inet_ntop(AF_INET, &(inet->inet_daddr), dtmp, 50), ntohs(inet->inet_dport));	  
 		  }

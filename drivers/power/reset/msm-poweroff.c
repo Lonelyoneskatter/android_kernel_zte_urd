@@ -270,9 +270,29 @@ static void halt_spmi_pmic_arbiter(void)
 	}
 }
 
+#if 1 /* ZTE avoid unnecessary warm reset, part 1/3 */
+char *zte_unnecessary_warm_cmd[] = {
+	"ACTION_REBOOT", /* = "Received ACTION_REBOOT broadcast" */
+};
+#endif
+
 static void msm_restart_prepare(const char *cmd)
 {
 	bool need_warm_reset = false;
+
+#if 1 /* ZTE avoid unnecessary warm reset, part 2/3 */
+	bool avoid_warm_reset = false;  /* to override the var: need_warm_reset */
+	int i = 0;
+
+	if (cmd != NULL && cmd[0] != '\0' && !in_panic && restart_mode != RESTART_DLOAD) {  /* valid command, but not in panic or dload restart */
+		for (i = 0; i < ARRAY_SIZE(zte_unnecessary_warm_cmd); i++) {  /* check if match one of predefined strings */
+			if (strstr(cmd, zte_unnecessary_warm_cmd[i])) {  /* if substring matched */
+				avoid_warm_reset = true;  /* set matched flag */
+				break;
+			}
+		}
+	}
+#endif
 
 #if defined(CONFIG_MSM_DLOAD_MODE) && !defined(ZTE_FEATURE_TF_SECURITY_SYSTEM_HIGH)
 
@@ -308,8 +328,14 @@ static void msm_restart_prepare(const char *cmd)
 				(cmd != NULL && cmd[0] != '\0'));
 	}
 
-	/* Hard reset the PMIC unless memory contents must be maintained. */
+/* Hard reset the PMIC unless memory contents must be maintained. */
+#if 1 /* ZTE avoid unnecessary warm reset, here we want to make a minimal impact to the original sequence, part 3/3 */
+	if (need_warm_reset && !avoid_warm_reset) {  /* original warm but not the normal aging reboot test */
+		printk(KERN_NOTICE "zte_restart flag %d, %d, %d, %d\n",  /* print the debug info */
+			avoid_warm_reset, in_panic, download_mode, restart_mode);
+#else
 	if (need_warm_reset) {
+#endif
 		qpnp_pon_system_pwr_off(PON_POWER_OFF_WARM_RESET);
 	} else {
 		qpnp_pon_system_pwr_off(PON_POWER_OFF_HARD_RESET);
