@@ -5397,7 +5397,7 @@ static ssize_t headphone_gain_store(struct kobject *kobj,
 }
 
 static struct kobj_attribute headphone_gain_attribute =
-	__ATTR(headphone_gain, 0664,
+	__ATTR(gpl_headphone_gain, 0664,
 		headphone_gain_show,
 		headphone_gain_store);
 
@@ -5424,7 +5424,7 @@ static ssize_t mic_gain_store(struct kobject *kobj,
 }
 
 static struct kobj_attribute mic_gain_attribute =
-	__ATTR(mic_gain, 0664,
+	__ATTR(gpl_mic_gain, 0664,
 		mic_gain_show,
 		mic_gain_store);
 
@@ -5451,7 +5451,7 @@ static ssize_t speaker_gain_store(struct kobject *kobj,
 }
 
 static struct kobj_attribute speaker_gain_attribute =
-	__ATTR(speaker_gain, 0664,
+	__ATTR(gpl_speaker_gain, 0664,
 		speaker_gain_show,
 		speaker_gain_store);
 
@@ -5990,14 +5990,14 @@ static int msm8x16_wcd_spmi_probe(struct spmi_device *spmi)
 	dev_set_drvdata(&spmi->dev, msm8x16);
 
 #ifdef CONFIG_SOUND_CONTROL
-	sound_control_kobj = kobject_create_and_add("sound_control", kernel_kobj);
-	if (sound_control_kobj == NULL) {
-		pr_warn("%s kobject create failed!\n", __func__);
-        }
+	sound_control_kobj = kobject_create_and_add("sound_control_3", kernel_kobj);
 
-	ret = sysfs_create_group(sound_control_kobj, &sound_control_attr_group);
-        if (ret) {
-		pr_warn("%s sysfs file create failed!\n", __func__);
+	if (sound_control_kobj != NULL) {
+		ret = sysfs_create_group(sound_control_kobj, &sound_control_attr_group);
+        if (ret)
+			pr_warn("%s sysfs file create failed!\n", __func__);
+	} else {
+		pr_warn("%s kobject create failed!\n", __func__);
 	}
 #endif
 
