@@ -8,6 +8,8 @@
  *
  *  v2.0 - Many fixes, unofficial bump to 2.0.
  *
+ *  v2.1 - Fix derp, and force check powersuspend states.
+ *
  * This software is licensed under the terms of the GNU General Public
  * License version 2, as published by the Free Software Foundation, and
  * may be copied, distributed, and modified under those terms.
@@ -25,7 +27,7 @@
 #include <linux/powersuspend.h>
 
 #define MAJOR_VERSION	2
-#define MINOR_VERSION	0
+#define MINOR_VERSION	1
 
 struct workqueue_struct *power_suspend_work_queue;
 
@@ -110,13 +112,19 @@ void set_power_suspend_state(int new_state)
 	unsigned long irqflags;
 
 	spin_lock_irqsave(&state_lock, irqflags);
-	if (state == POWER_SUSPEND_INACTIVE && new_state == POWER_SUSPEND_ACTIVE) {
-		state = new_state;
+	if (state != POWER_SUSPEND_ACTIVE) {
+		new_state = POWER_SUSPEND_ACTIVE;
+		if (state != new_state) {
+			state = new_state;
+		}
 		power_suspended = true;
 		queue_work(power_suspend_work_queue, &power_suspend_work);
-	} else if (state == POWER_SUSPEND_ACTIVE && new_state == POWER_SUSPEND_INACTIVE) {
-		state = new_state;
-		power_suspended = true;
+	} else if (state != POWER_SUSPEND_INACTIVE) {
+		new_state = POWER_SUSPEND_INACTIVE;
+		if (state != new_state) {
+			state = new_state;
+		}
+		power_suspended = false;
 		queue_work(power_suspend_work_queue, &power_resume_work);
 	}
 	spin_unlock_irqrestore(&state_lock, irqflags);
